@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nosac</title>
+  <link rel="prefetch" href="archive.html" />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <link rel="dns-prefetch" href="//cdnjs.cloudflare.com" />
+  <link rel="prefetch" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script" crossorigin />
+  <link rel="preload" href="sjaj-overlay.png" as="image" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root{
+      /* Base (design) size (treat turntable like a fixed-aspect image) */
+      --w:456px;
+      --h:304px;
+      --m: 32px;
+      --stack:105px;
+      --rp:18px;
+      --sidebar-w: 320px;
+      --sidebar-gap: 0px;
+
+      /* JS-controlled margins */
+      --edge-x: 16px;
+      --edge-y: 16px;
+
+      /* Fixed uniform scaling */
+      --scale: 1;
+
+      /* Flip lift scale */
+      --lift-scale: 1;
+      --drop-x: 0px;
+      --drop-rot: 0deg;
+    }
+
+    /* ============ THEME TOKENS ============ */
+    body[data-theme="light"]{
+      --page:#d8dbe0;--rad:radial-gradient(circle at 50% 50%,rgba(0,0,0,.06) 0%,transparent 75%);
+      --case:linear-gradient(168deg,#ffffff 0%,#f1f1f1 38%,#dfdfdf 100%);--case-b:1px solid rgba(255,255,255,.4);
+      --case-s:30px 40px 80px rgba(0,0,0,.18),20px 20px 60px #c5c7c9,-20px -20px 60px #fff,inset 1px 1px 2px rgba(255,255,255,.8),inset -1px -1px 2px rgba(0,0,0,.05);
+      --plat:drop-shadow(10px 20px 25px rgba(0,0,0,.45));--plat-in:inset 0 0 10px rgba(255,255,255,.1);
+      --vin:#222222;--grooves:none;
+      --vin-noise:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+      --vin-noise-opacity:.35;
+      --vin-a:none;
+      --shine:0;
+      --lab:#fff;--lab-b:4px solid #000;--lab-t:#000;
+      --spin:linear-gradient(145deg,#e6e6e6,#999);--spin-s:1px 1px 3px rgba(0,0,0,.5);
+      --vfd:#00f2ff;--vbg:#0a0c0b;--db:2px solid #222;--ds:inset 0 0 10px rgba(0,0,0,.8),0 1px 1px rgba(255,255,255,.4);--do:#1a1a1a;
+      --well:#ebebeb;--well-s:inset 1px 1px 3px rgba(0,0,0,.15),0 1px 2px rgba(255,255,255,.8);--well-b:1px solid #dcdcdc;
+      --sw:var(--well);--track:rgba(0,0,0,.12);--mk:#666;--mkl:#999;
+      --hbg:linear-gradient(145deg,#f4f4f4,#eaeaea);--hs:0 2px 4px rgba(0,0,0,.2);--stag:#aaa;
+      --bank:linear-gradient(180deg,#e0e0e0 0%,#d2d2d2 100%);
+      --btn:linear-gradient(180deg,#f8f8f8 0%,#e8e8e8 100%);--btn-b:none;--btn-s:0 2px 0 #bbb;
+      --btn-a:#dcdcdc;--btn-as:inset 0 2px 4px rgba(0,0,0,.15),0 .5px 0 #999;
+      --ic:#444;
+      --pbg:var(--well);--pt:var(--stag);--tg:#9d9d9d;--tgb:1px solid #888;--tgs:inset 2px 2px 4px rgba(0,0,0,.3),inset -1px -1px 2px rgba(255,255,255,.2);
+      --th:linear-gradient(145deg,#f2f2f2,#dcdcdc);
+      --lo:radial-gradient(circle at 50% 80%,#4a0505 0%,#2a0000 100%);
+      --ln:radial-gradient(circle at 45% 35%,#ffd6d6 0%,#ff3a3a 18%,#ff1a1a 45%,#b30000 72%,#660000 100%);
+      --lb:1px solid rgba(0,0,0,.3);
+      --ls:inset 0 -1px 2px rgba(255,255,255,.1),inset 0 2px 4px rgba(0,0,0,.7),0 1px 1px rgba(255,255,255,.6);
+      --lons:inset 0 -1px 2px rgba(255,255,255,.14),0 0 24px rgba(255,0,0,.7),0 0 10px rgba(255,0,0,.45);
+      --tshadow:var(--rodSh);
+      --tbase:radial-gradient(circle at 30% 30%,#444,#1a1a1a);--tbase-b:1px solid #111;
+      --tpiv:radial-gradient(circle,#ddd,#999);--tpiv-b:1px solid #888;--piv-rim:conic-gradient(from -45deg,rgba(255,255,255,.85),rgba(255,255,255,0) 35%,rgba(0,0,0,.18) 70%,rgba(255,255,255,.55));
+      --head:linear-gradient(145deg,#dcdcdc,#a0a0a0);--head-b:1px solid #999;
+      --needle:#444;--lift:#999;
+      --rodA:#b0b0b0;--rodB:#ffffff;--rodC:#b8b8b8;--rodD:#f2f2f2;--rodE:#9a9a9a;--rodStroke:rgba(0,0,0,.28);--rodSh:drop-shadow(12px 18px 12px rgba(0,0,0,.45));
+      --noise:none;
+      --nav-bg: rgba(255, 255, 255, 0.2);
+      --nav-text: #333;
+      --flip-overlay:#fff;
+    }
+
+    body[data-theme="dark"]{
+      --page:#1a1a1a;--rad:none;background:linear-gradient(160deg,#202020 0%,#141414 55%,#121212 100%);
+      --case:linear-gradient(145deg,#303030,#1b1b1b);--case-b:1px solid #2a2a2a;
+      --case-s:0 60px 120px rgba(0,0,0,0.95),0 20px 40px rgba(0,0,0,0.8),inset 1px 1px 1px rgba(255,255,255,0.05);
+      --plat:drop-shadow(20px 20px 24px rgba(0,0,0,0.8));--plat-in:inset 0 0 30px rgba(255,255,255,0.01);
+      --vin:#111111;
+      --grooves:none;
+      --vin-noise:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+      --vin-noise-opacity:.35;
+      --vin-a:none;
+      --shine:.4;
+      --lab:#888;--lab-b:2px solid #111;--lab-t:#111;
+      --spin:linear-gradient(145deg,#333,#0a0a0a);--spin-s:1px 1px 3px rgba(0,0,0,1);
+      --vfd:#00f2ff;--vbg:#030504;--db:1px solid #111;--ds:inset 0 0 15px rgba(0,0,0,1),0 1px 1px rgba(255,255,255,0.02);--do:#050505;
+      --well:rgba(0,0,0,0.15);--well-s:inset 1px 2px 4px rgba(0,0,0,0.2);--well-b:1px solid rgba(0,0,0,0.2);
+      --sw:rgba(0,0,0,0.25);--track:rgba(0,0,0,0.5);--mk:#444;--mkl:#444;
+      --hbg:linear-gradient(145deg,#4a4a4a,#2c2c2c);--hs:4px 4px 6px rgba(0,0,0,0.5);--stag:#444;
+      --bank:linear-gradient(180deg,#1c1c1c 0%,#101010 100%);
+      --btn:linear-gradient(180deg,#232323 0%,#202020 100%);--btn-b:none;--btn-s:none;
+      --btn-a:#181818;--btn-as:inset 0 2px 6px rgba(0,0,0,0.75);
+      --ic:#fff;
+      --pbg:rgba(0,0,0,0.15);--pt:var(--stag);--tg:#020202;--tgb:1px solid #000;--tgs:inset 2px 2px 4px rgba(0,0,0,1);
+      --th:linear-gradient(145deg,#585858,#2f2f2f);
+      --lo:radial-gradient(circle at 50% 80%,#1a0000 0%,#0d0000 100%);
+      --ln:radial-gradient(circle at 45% 35%,#ffbcbc 0%,#ff4a4a 16%,#cc1515 45%,#800000 75%,#440000 100%);
+      --lb:1px solid rgba(0,0,0,0.6);
+      --ls:inset 0 2px 4px rgba(0,0,0,0.9);
+      --lons:0 0 18px rgba(255,0,0,0.65),0 0 9px rgba(255,0,0,0.35),inset 0 -1px 2px rgba(255,255,255,0.12);
+      --tshadow:drop-shadow(18px 10px 14px rgba(0,0,0,0.85));
+      --tbase:radial-gradient(circle at 30% 30%,#222,#000);--tbase-b:1px solid #000;
+      --tpiv:radial-gradient(circle,#3a3a3a,#1a1a1a);--tpiv-b:1px solid #111;--piv-rim:conic-gradient(from -45deg,rgba(255,255,255,0.55),rgba(255,255,255,0) 38%,rgba(0,0,0,0.55) 72%,rgba(255,255,255,0.32));
+      --head:linear-gradient(145deg,#555,#333);--head-b:1px solid #111;
+      --needle:#111;--lift:#222;
+      --rodA:#2f2f2f;--rodB:#7a7a7a;--rodC:#3b3b3b;--rodD:#686868;--rodE:#262626;--rodStroke:rgba(0,0,0,0.78);--rodSh:drop-shadow(18px 10px 14px rgba(0,0,0,0.92));
+      --noise:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+      --nav-bg: rgba(0, 0, 0, 0.2);
+      --nav-text: #fff;
+      --flip-overlay:#000;
+    }
+
+    body{margin:0;min-height:100vh;display:flex;overflow:hidden;user-select:none;
+      background:
+        radial-gradient(circle at 14% 10%,rgba(255,255,255,.28) 0%,rgba(255,255,255,.10) 24%,rgba(255,255,255,0) 50%),
+        radial-gradient(circle at 24% 18%,rgba(255,255,255,.12) 0%,rgba(255,255,255,0) 44%),
+        linear-gradient(180deg,rgba(255,255,255,.04) 0%,rgba(0,0,0,.08) 100%),
+        var(--page)}
+
+    /* TOP NAVIGATION */
+    .top-nav {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      right: 24px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 3000;
+      color: var(--nav-text);
+      pointer-events: none;
+    }
+    .nav-btn {
+      position: relative;
+      pointer-events: auto;
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 0 12px;
+      height: 40px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      transition: background 0.2s, filter 0.1s, transform 0.2s;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* Sidebar button: icon-only + active state */
+    #sidebarBtn {
+      width: 40px;
+      padding: 0;
+      justify-content: center;
+      gap: 0;
+    }
+    #sidebarBtn svg { opacity: 0.85; }
+    #sidebarBtn.active {
+      filter: brightness(0.85);
+      transform: translateY(1px);
+    }
+    .nav-btn:active { filter: brightness(0.8); transform: translateY(1px); }
+
+    /* THEME TOGGLE */
+    .theme-toggle-container {
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      padding: 4px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      width: 70px;
+      height: 40px;
+      transition: all 0.3s ease;
+      position: relative;
+      pointer-events: auto;
+    }
+    .theme-toggle-thumb {
+      width: 32px;
+      height: 32px;
+      background: #fff;
+      border-radius: 12px;
+      position: absolute;
+      left: 4px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      pointer-events: none;
+    }
+    body[data-theme="dark"] .theme-toggle-thumb { transform: translateX(30px); background: #222; }
+    .theme-icon { position: absolute; width: 18px; height: 18px; transition: opacity 0.3s, transform 0.3s; }
+    .sun-icon { color: #f59e0b; opacity: 1; }
+    .moon-icon { color: var(--vfd); opacity: 0; }
+    body[data-theme="dark"] .sun-icon { opacity: 0; }
+    body[data-theme="dark"] .moon-icon { opacity: 1; }
+
+    /* WRAPPER + FULLSCREEN BACKGROUND */
+    .main-wrapper { width: 100vw; height: 100vh; position: relative; }
+    .container-nosac {
+      position:absolute;
+      inset:0;
+      background: var(--rad);
+      z-index: 10;
+      transition:left 0.6s cubic-bezier(0.16, 1, 0.3, 1), right 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Sidebar push: always reserve space on the right */
+    .sidebar-open .container-nosac { left: var(--edge-x); right: calc(var(--edge-x) + var(--sidebar-w) + var(--sidebar-gap)); }
+    @media (min-width: 1270px) {
+      .sidebar-open .container-nosac { left: calc(var(--edge-x) + 10vw); }
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      background: transparent !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      padding: 100px 32px 80px 4px;
+      color: var(--nav-text);
+      overflow-y: auto;
+      border-left: none;
+      box-shadow: none;
+      z-index: 2500;
+      transform: translateX(calc(100% + var(--sidebar-gap)));
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      right: 0;
+    }
+    body.preload-sidebar .sidebar,
+    body.preload-sidebar .container-nosac {
+      transition: none !important;
+    }
+    .sidebar-open .sidebar { transform: translateX(calc(-1 * var(--sidebar-gap))); }
+    @media (min-width: 1270px) {
+      :root { --sidebar-gap: 72px; } /* 3x 24px */
+    }
+
+    .album-header { margin-bottom: 30px; margin-top: 0; }
+    .album-artist { font-size: 26px; font-weight: 900; letter-spacing: -0.4px; line-height: 1.05; }
+    .album-title { font-size: 18px; font-weight: 800; line-height: 1.15; opacity: 0.75; margin-top: 6px; }
+    .album-year { font-size: 14px; opacity: 0.6; margin-top: 4px; }
+    .tracklist { list-style: none; padding: 0; margin-top: 16px; }
+    .track-item { display:flex; justify-content:space-between; align-items:center; gap:8px; padding: 4px 0; border-bottom:none; font-size:14px; opacity:0.65; }
+    .track-name { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .empty-track-item{display:block;opacity:.85}
+    .empty-track-message{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
+    .empty-track-title{display:block;font-weight:800}
+    .empty-track-subtitle{display:block;font-weight:400}
+    .track-dur { opacity: 0.65; font-family: monospace; }
+
+    /* GRAMOPHONE CORE */
+    .nosac{width:var(--w);height:var(--h);aspect-ratio:570/380;background:var(--case);border-radius:18px;position:relative;box-shadow:var(--case-s);border:var(--case-b);display:flex;align-items:center;justify-content:center;transition:.3s ease-out;overflow:visible;flex-shrink:0}
+    .nosac:before{content:"";position:absolute;inset:0;background-image:var(--noise);pointer-events:none;mix-blend-mode:overlay;opacity:.9}
+    .nosac:after{
+      content:"";
+      position:absolute;
+      left:10%;
+      right:10%;
+      bottom:-18px;
+      height:20px;
+      border-radius:50%;
+      background:radial-gradient(ellipse at center,rgba(0,0,0,.26) 0%,rgba(0,0,0,.12) 45%,rgba(0,0,0,0) 78%);
+      filter:blur(8px);
+      pointer-events:none;
+      z-index:-1;
+    }
+
+    /* Center the turntable exactly 50/50 in the available container */
+    #mainCase {
+      position:absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(var(--scale));
+      transform-origin: center;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .platter-container{position:relative;height:91%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;transform:translateX(calc(-22% - 13px));transform-origin:center;transition:transform 700ms cubic-bezier(0.16, 1, 0.3, 1);z-index:20;perspective:1400px}
+    .platter{width:100%;height:100%;aspect-ratio:1/1;position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;cursor:grab}
+    .platter:before{content:"";position:absolute;left:50%;top:50%;width:88%;height:88%;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;z-index:1;background:linear-gradient(135deg,#1a1a1a 0%,#151515 45%,#101010 100%);box-shadow:5px 5px 14px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.05),inset 0 -1px 0 rgba(0,0,0,.55);filter:none;transition:filter 420ms cubic-bezier(0.22, 1, 0.36, 1)}
+    .platter:active{cursor:grabbing}
+    .record-stage{position:absolute;inset:0;transform:perspective(1400px) translateX(var(--drop-x,0px)) rotate(var(--drop-rot,0deg)) rotateX(var(--flip-x,0deg)) scale(var(--lift-scale,1));transform-origin:center;transform-style:preserve-3d;backface-visibility:visible;transition:transform 700ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), filter 320ms cubic-bezier(0.22, 1, 0.36, 1);z-index:2;opacity:1;will-change:transform;filter:drop-shadow(10px 10px 15px rgba(0,0,0,var(--record-shadow-alpha,.62)))}
+    body.no-record .record-stage{opacity:0;pointer-events:none}
+    body.no-record .flip-nav-container{opacity:0;pointer-events:none}
+    body.no-record .button-bank .skeuo-btn{opacity:.35;pointer-events:none}
+    body[data-theme="light"] .platter:after{display:none}
+    .vinyl-record{width:99.2%;height:99.2%;background:var(--vin);border-radius:50%;position:relative;z-index:2;display:block;will-change:transform;background-image:var(--grooves);box-shadow:inset 0 0 60px rgba(0,0,0,1);filter:none;pointer-events:none;overflow:hidden;clip-path:circle(49.7% at 50% 50%);-webkit-mask-image:radial-gradient(circle at center,transparent 0 2.2%,#000 2.7% 100%);mask-image:radial-gradient(circle at center,transparent 0 2.2%,#000 2.7% 100%);transition:filter 420ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1)}
+    .vinyl-record{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+    .vinyl-record-back{position:absolute;inset:0;z-index:1;transform:rotateX(180deg) rotate(0deg) scaleY(-1)}
+    .vinyl-record-back{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+    .vinyl-record-back .vinyl-label{opacity:1;transform:translate(-50%,-50%);transform-origin:center}
+    .vinyl-record:before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background-image:var(--vin-noise);
+      background-size:900px 900px;
+      opacity:var(--vin-noise-opacity, .2);
+      mix-blend-mode:multiply;
+      pointer-events:none;
+    }
+    .vinyl-record:after{display:none}
+    .vinyl-shine{display:none}
+    .vinyl-static-sheen{
+      position:absolute;
+      width:99.2%;
+      height:99.2%;
+      border-radius:50%;
+      pointer-events:none;
+      z-index:26;
+      overflow:hidden;
+      background:
+        linear-gradient(135deg,
+          rgba(255,255,255,0) 21%,
+          rgba(255,255,255,.46) 34%,
+          rgba(255,255,255,.18) 44%,
+          rgba(255,255,255,.05) 51%,
+          rgba(255,255,255,0) 58%),
+        linear-gradient(315deg,
+          rgba(255,255,255,0) 24%,
+          rgba(255,255,255,.40) 35%,
+          rgba(255,255,255,.15) 45%,
+          rgba(255,255,255,.04) 52%,
+          rgba(255,255,255,0) 59%),
+        radial-gradient(circle at 50% 50%,
+          rgba(0,0,0,0) 46%,
+          rgba(255,255,255,.06) 71%,
+          rgba(0,0,0,.24) 100%);
+      mix-blend-mode:overlay;
+      opacity:.62;
+    }
+    .vinyl-static-sheen{display:none}
+    .vinyl-static-sheen:before{
+      content:"";
+      position:absolute;
+      inset:-6%;
+      border-radius:50%;
+      background:
+        repeating-linear-gradient(132deg,
+          rgba(255,255,255,.08) 0 1px,
+          rgba(255,255,255,0) 1px 5px);
+      opacity:.18;
+      filter:blur(.35px);
+      transform:translateX(-1%) translateY(1%);
+      mix-blend-mode:screen;
+    }
+    .vinyl-static-sheen:after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(255,255,255,0) 50%,
+          rgba(255,255,255,.12) 70%,
+          rgba(255,255,255,0) 100%);
+      opacity:.30;
+      mix-blend-mode:soft-light;
+    }
+    .vinyl-photo-overlay{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:99.2%;
+      height:99.2%;
+      transform:translate(-50%,-50%) scale(1) rotate(5deg);
+      border-radius:50%;
+      pointer-events:none;
+      z-index:5;
+      object-fit:cover;
+      display:block;
+      opacity:.15 !important;
+      mix-blend-mode:screen;
+      filter:none;
+      clip-path:circle(49.7% at 50% 50%);
+      -webkit-mask-image:radial-gradient(circle at center,#000 0 96%,transparent 100%);
+      mask-image:radial-gradient(circle at center,#000 0 96%,transparent 100%);
+    }
+    .record-stage > .vinyl-photo-overlay{
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+    }
+    .vinyl-specular-fixed{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:99.2%;
+      height:99.2%;
+      transform:translate(-50%,-50%);
+      border-radius:50%;
+      pointer-events:none;
+      z-index:3;
+      background:var(--vin-a);
+      clip-path:circle(49.7% at 50% 50%);
+      -webkit-mask-image:radial-gradient(circle at center,transparent 0 2.2%,#000 2.7% 100%);
+      mask-image:radial-gradient(circle at center,transparent 0 2.2%,#000 2.7% 100%);
+      backface-visibility:hidden;
+      -webkit-backface-visibility:hidden;
+    }
+    .vinyl-specular-fixed.back{
+      transform:translate(-50%,-50%) rotateX(180deg) scaleX(-1);
+    }
+    body[data-theme="light"] .vinyl-photo-overlay{
+      opacity:.4 !important;
+    }
+    .vinyl-label{width:33%;height:33%;background:#efe9d8;border-radius:50%;border:2px solid #252525;box-sizing:border-box;display:flex;align-items:center;justify-content:center;z-index:10;box-shadow:0 0 10px rgba(0,0,0,.5);opacity:1;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);overflow:hidden;isolation:isolate}
+    .vinyl-label:before{content:"";position:absolute;inset:calc(4.8% - 1px);border-radius:50%;border:1.6px solid rgba(22,22,22,.88);pointer-events:none}
+    .vinyl-label:after{content:"";position:absolute;inset:19%;border-radius:50%;border:1px solid rgba(22,22,22,.22);pointer-events:none}
+    .label-standard{position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+    .label-header{position:absolute;top:24%;left:12%;right:12%;display:flex;flex-direction:column;align-items:center;gap:2px}
+    #labelBrand,.label-brand{font-family:Inter,system-ui,sans-serif;font-size:5.8px;font-weight:900;letter-spacing:.4px;line-height:1;color:#f3f3f3;text-align:center;text-transform:uppercase}
+    #labelTitle,.label-title{font-family:Inter,system-ui,sans-serif;font-size:3.9px;font-weight:400;letter-spacing:.4px;color:#ececec;text-align:center;line-height:1.1;text-transform:uppercase;opacity:1}
+    .label-midband{position:absolute;left:4.8%;right:4.8%;top:calc(50% - 6.5% + 0px);height:13%;background:#181818;border-top:1px solid #1f1f1f;border-bottom:1px solid #1f1f1f;display:grid;grid-template-columns:1fr 1fr;align-items:center;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;font-size:4.3px;font-weight:400;letter-spacing:.2px;color:#f1f1f1;text-transform:uppercase}
+    .label-midband span{text-align:center}
+    .label-side{position:absolute;left:0;right:0;top:64.7%;font-family:Inter,system-ui,sans-serif;font-size:5.8px;font-weight:400;letter-spacing:.2px;color:#f1f1f1;text-transform:uppercase;text-align:center}
+    .label-metadata,#labelMeta,.label-meta{position:absolute;left:12%;right:12%;top:76.1%;font-family:Inter,system-ui,sans-serif;font-size:2.8px;font-weight:300;letter-spacing:.2px;color:#e9e9e9;text-transform:uppercase;text-align:center;line-height:1.2;opacity:1}
+    #sideStamp{display:none}
+    #editionSub{display:none}
+    .label-hole-clear{position:absolute;left:50%;top:50%;width:14%;height:14%;transform:translate(-50%,-50%);border-radius:50%;background:transparent;box-shadow:0 0 0 .75px #181818 inset}
+    .spindle{width:11px;height:11px;background:var(--spin);border-radius:50%;z-index:40;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:var(--spin-s);transition:opacity 320ms cubic-bezier(0.22, 1, 0.36, 1)}
+
+    .tonearm-assembly{position:absolute;right:calc(var(--stack) + var(--rp) + 12px - 16px - 12px - 4px - 2px - 6px + 2px + 8px);top:calc(24% - 46px);width:80px;height:240px;z-index:50;pointer-events:none;display:flex;flex-direction:column;align-items:center;opacity:1;transition:opacity 520ms cubic-bezier(0.22, 1, 0.36, 1)}
+    .tonearm-base{width:46px;height:46px;border-radius:50%;position:relative;box-shadow:2px 4px 12px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;border:var(--tbase-b);background:var(--tbase);z-index:10}
+    .tonearm-pivot{width:19px;height:19px;background:var(--tpiv);border-radius:50%;border:var(--tpiv-b);box-shadow:inset 0 2px 4px rgba(255,255,255,.2);z-index:20;position:relative;overflow:hidden}
+    .tonearm-pivot:before{content:"";position:absolute;inset:-2px;background:var(--piv-rim);-webkit-mask:radial-gradient(circle,transparent 55%,#000 60%);mask:radial-gradient(circle,transparent 55%,#000 60%);opacity:.55;pointer-events:none}
+    .tonearm-rod-svg{position:absolute;top:23px;width:80px;height:344px;transform-origin:40px 0;transform:rotate(0deg);transition:transform 1.2s cubic-bezier(.445,.05,.55,.95);z-index:15;filter:var(--tshadow);pointer-events:none}
+    .headshell-pro{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:16px;height:32px;background:var(--head);border-radius:2px 2px 5px 5px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 1px rgba(255,255,255,.12);border:var(--head-b);opacity:1 !important;pointer-events:auto;cursor:grab}
+    .headshell-pro:active{cursor:grabbing}
+    .needle-point{width:2px;height:6px;background:var(--needle);position:absolute;bottom:-2px;border-radius:1px}
+    .finger-lift{position:absolute;right:-8px;top:10px;width:10px;height:2px;background:var(--lift);border-radius:0 2px 2px 0;box-shadow:1px 1px 2px rgba(0,0,0,.2)}
+
+    /* Controls */
+    .control-cluster{position:absolute;top:16px;bottom:var(--rp);right:var(--rp);display:flex;flex-direction:column;justify-content:flex-end;gap:12px;align-items:flex-end;z-index:10;width:var(--stack)}
+    .sliders-sidebar{display:flex;gap:18px;height:calc(15vh - 20px);min-height:60px;max-height:100px;justify-content:flex-end;width:100%;margin-top:12px;margin-bottom:auto;padding-right:10px}
+    @media (max-width: 640px) { .sliders-sidebar { height: 70px; } }
+
+    .control-elements-stack{display:flex;flex-direction:column;gap:7px;width:100%}
+    .elegant-slider-well{width:10px;height:100%;background:var(--sw);border-radius:5px;box-shadow:inset 2px 2px 5px rgba(0,0,0,.25),inset -1px -1px 2px rgba(255,255,255,.06);border:var(--well-b);position:relative;display:flex;justify-content:center}
+    body[data-theme="light"] .elegant-slider-well{box-shadow:var(--well-s);background:var(--well)}
+    .elegant-slider-track{position:absolute;width:1.5px;height:80%;background:var(--track);top:10%}
+    .rpm-markers{position:absolute;left:-14px;top:0;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:10% 0;pointer-events:none}
+    .marker-tick{width:6px;height:1px;background:var(--mk);position:relative}
+    .marker-tick:after{content:attr(data-val);position:absolute;right:10px;top:-4px;font-size:6px;color:var(--mkl);font-weight:bold}
+    .elegant-slider-handle{position:absolute;width:18px;height:9px;background:var(--hbg);border-radius:2px;left:50%;box-shadow:var(--hs);cursor:pointer;z-index:5;top:50%;transform:translate(-50%,-50%);border:none}
+    .slider-tag{position:absolute;bottom:-14px;font-size:6px;font-weight:bold;color:var(--stag);text-transform:uppercase;white-space:nowrap}
+
+    .digital-display{width:100%;height:38px;background:var(--vbg);border-radius:5px;box-shadow:var(--ds);border:var(--db);display:flex;justify-content:space-between;align-items:center;padding:0 10px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;overflow:hidden;position:relative;color:var(--do);transition:color .3s ease;font-size:8px}
+    .digital-display.on{color:var(--vfd);text-shadow:0 0 20px rgba(0,242,255,1)}
+    #nowPlayingLabel{transform:translateY(-1px)}
+    #timer{transform:translateY(4px)}
+    .power-section{width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--pbg);padding:6px 8px;border-radius:8px;box-shadow:var(--well-s);border:var(--well-b)}
+    .status-lamp{width:8px;height:8px;border-radius:50%;background:var(--lo);border:var(--lb);position:relative;box-shadow:var(--ls);transition:.3s ease}
+    .on .status-lamp{background:var(--ln);box-shadow:var(--lons)}
+    .toggle-switch{width:32px;height:16px;background:var(--tg);border-radius:8px;padding:2px;cursor:pointer;position:relative;box-shadow:var(--tgs);border:var(--tgb)}
+    .toggle-handle{width:12px;height:12px;background:var(--th);border-radius:50%;position:absolute;top:1px;left:2px;transition:.22s ease;box-shadow:1px 2px 4px rgba(0,0,0,.35)}
+    .toggle-switch.on .toggle-handle{left:16px}
+    .button-bank{display:flex;gap:1px;width:100%;background:var(--bank);border-radius:8px;padding:2.5px;box-shadow:var(--well-s);border:var(--well-b)}
+    .skeuo-btn{flex:1;height:36px;background:var(--btn);border:var(--btn-b);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.1s ease;box-shadow:var(--btn-s)}
+    .skeuo-btn:first-child{border-radius:6px 0 0 6px}.skeuo-btn:last-child{border-radius:0 6px 6px 0}
+    .skeuo-btn .icon{opacity:.6;transition:opacity .2s,transform .1s; transform: scale(0.8); }
+    .skeuo-btn:active, .skeuo-btn.active { z-index:10; background:var(--btn-a); box-shadow:var(--btn-as); transform:translateY(.5px); }
+    .play-icon{width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:8px solid var(--ic)}
+    .pause-icon{display:flex;gap:2px}.pause-bar{width:2.5px;height:8px;background:var(--ic)}
+    .stop-icon{width:8px;height:8px;background:var(--ic);border-radius:1px}
+
+    /* Flip overlay */
+    .flip-overlay{ position:fixed; inset:0; background:var(--flip-overlay,#000); opacity:0; pointer-events:none; z-index:5000; transition: opacity 760ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .flip-overlay.to-black{ transition-duration: 760ms; }
+    .flip-overlay.from-black{ transition-duration: 760ms; }
+    .flip-overlay.on{ opacity:1; }
+
+    /* During flip, ensure record renders ABOVE the tonearm */
+    body.is-flipping .platter-container{ z-index: 120; }
+    body.is-flipping .record-stage{ z-index: 140; }
+    /* Keep tonearm cast-shadow visually constant during drop/flip. */
+    body.is-flipping .tonearm-assembly{ z-index: 50; opacity:1; }
+
+    /* Flip button: constant 32px below scaled turntable */
+    .flip-nav-container { pointer-events:auto; z-index:100; position:absolute; left:50%; transform:translateX(-50%);
+      top: calc(50% + (var(--h) * var(--scale) / 2) + 32px);
+    }
+    .flip-nav-btn {
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 0 20px;
+      height: 42px;
+      border-radius: 21px;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      color: var(--nav-text);
+    }
+    .flip-nav-btn[disabled]{ opacity:0.6; cursor:default; pointer-events:none; }
+    .archive-layer{
+      position:fixed;
+      inset:0;
+      z-index:7000;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 220ms ease;
+      background:#000;
+    }
+    .archive-layer.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .archive-frame{
+      width:100%;
+      height:100%;
+      border:0;
+      background:#000;
+    }
+  </style>
+</head>
+
+<body data-theme="light" class="preload-sidebar no-record">
+  <div class="flip-overlay" id="flipOverlay" aria-hidden="true"></div>
+
+  <nav class="top-nav" id="topNav">
+    <a class="nav-btn" href="archive.html" aria-label="Open Archive" onclick="openArchive(event)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Archive
+    </a>
+
+    <div class="theme-toggle-container" onclick="toggleTheme(event)" id="themeToggle" aria-label="Theme Toggle">
+      <div class="theme-toggle-thumb">
+        <svg class="theme-icon sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" /></svg>
+        <svg class="theme-icon moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+      </div>
+    </div>
+
+    <div class="nav-btn" id="sidebarBtn" onclick="toggleSidebar(event)" aria-label="Info">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+        <line x1="15" x2="15" y1="3" y2="21"/>
+      </svg>
+    </div>
+  </nav>
+
+  <div class="main-wrapper" id="mainWrapper">
+    <div class="container-nosac" id="containerNosac">
+      <div class="nosac" id="mainCase">
+        <div class="platter-container">
+          <div class="platter" id="platter">
+            <div class="record-stage" id="recordStage">
+              <img
+                class="vinyl-photo-overlay"
+                id="vinylOverlayImage"
+                src="sjaj-overlay.png"
+                loading="eager"
+                decoding="sync"
+                fetchpriority="high"
+                alt=""
+                aria-hidden="true"
+              />
+              <img
+                class="vinyl-photo-overlay"
+                id="vinylOverlayImageBack"
+                src="sjaj-overlay.png"
+                loading="eager"
+                decoding="sync"
+                fetchpriority="high"
+                alt=""
+                aria-hidden="true"
+                style="transform:translate(-50%,-50%) scaleX(-1) rotate(95deg) rotateX(180deg)"
+              />
+              <div class="vinyl-specular-fixed" aria-hidden="true"></div>
+              <div class="vinyl-specular-fixed back" aria-hidden="true"></div>
+              <div class="vinyl-record" id="vinylRecord">
+                <div class="vinyl-label" id="vinylLabel">
+                  <div class="label-standard">
+                    <div class="label-header">
+                      <span id="labelBrand" class="label-brand">THE DARK SIDE OF THE MOON</span>
+                      <span id="labelTitle" class="label-title">PINK FLOYD</span>
+                    </div>
+                    <div class="label-midband">
+                      <span>STEREO</span>
+                      <span>33 RPM</span>
+                    </div>
+                    <div class="label-hole-clear" aria-hidden="true"></div>
+                    <span class="label-side" id="labelSideText">SIDE A</span>
+                    <span id="editionSub" style="display:none">ANALOG MASTER</span>
+                    <span id="sideStamp" style="display:none">SIDE A</span>
+                    <span class="label-metadata label-meta" id="labelMeta">DESIGN PORTFOLIO<br/>MILAN SAMARDZIC</span>
+                  </div>
+                </div>
+              </div>
+              <div class="vinyl-record vinyl-record-back" id="vinylRecordBack" aria-hidden="true">
+                <div class="vinyl-label" id="vinylLabelBack"></div>
+              </div>
+            </div>
+          </div>
+          <div class="spindle"></div>
+        </div>
+
+        <div class="tonearm-assembly" id="tonearmAssembly">
+          <div class="tonearm-base"><div class="tonearm-pivot"></div></div>
+          <svg class="tonearm-rod-svg" id="tonearmRod" viewBox="0 0 80 320">
+            <defs>
+              <linearGradient id="rodGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:color-mix(in srgb,var(--rodE),#fff 28%)"/><stop offset="18%" style="stop-color:var(--rodA)"/><stop offset="40%" style="stop-color:var(--rodB)"/><stop offset="62%" style="stop-color:var(--rodC)"/><stop offset="100%" style="stop-color:var(--rodD)"/></linearGradient>
+              <linearGradient id="cwGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:rgba(0,0,0,.18)"/><stop offset="22%" style="stop-color:rgba(255,255,255,.45)"/><stop offset="55%" style="stop-color:rgba(0,0,0,.10)"/><stop offset="100%" style="stop-color:rgba(255,255,255,.28)"/></linearGradient>
+            </defs>
+            <rect x="37" y="-56" width="5" height="56" rx="2.5" fill="url(#rodGrad)" stroke="var(--rodStroke)" stroke-width=".5" />
+            <g transform="translate(24, -52)">
+              <rect width="32" height="28" rx="2.5" fill="url(#rodGrad)" stroke="var(--rodStroke)" stroke-width=".6" />
+              <rect x="0.8" y="0.8" width="30.4" height="26.4" rx="2.1" fill="url(#cwGrad)" opacity=".55" />
+            </g>
+            <rect x="36.8" y="0" width="6.4" height="187.2" rx="3.2" fill="url(#rodGrad)" stroke="var(--rodStroke)" stroke-width=".5" />
+            <foreignObject x="32" y="187" width="16" height="32">
+              <div xmlns="http://www.w3.org/1999/xhtml" class="headshell-pro"><div class="finger-lift"></div><div class="needle-point"></div></div>
+            </foreignObject>
+          </svg>
+        </div>
+        <div class="control-cluster">
+          <div class="sliders-sidebar">
+            <div class="elegant-slider-well" id="speedWell">
+              <div class="elegant-slider-track"></div>
+              <div class="rpm-markers">
+                <div class="marker-tick" data-val="45"></div><div class="marker-tick" data-val="33"></div><div class="marker-tick" data-val="25"></div>
+              </div>
+              <div class="elegant-slider-handle" id="speedHandle" style="top:50%"></div>
+              <span class="slider-tag">RPM</span>
+            </div>
+            <div class="elegant-slider-well" id="volWell">
+              <div class="elegant-slider-track"></div>
+              <div class="elegant-slider-handle" id="volHandle" style="top:20%"></div>
+              <span class="slider-tag">Vol</span>
+            </div>
+          </div>
+
+          <div class="control-elements-stack">
+            <div class="digital-display" id="displayArea">
+              <div class="flex flex-col justify-center">
+                <div class="text-[5px] opacity-40" id="nowPlayingLabel">Playing</div>
+                <div class="font-bold" id="sideDisplay">Side A</div>
+              </div>
+              <div class="text-right leading-tight">
+                <div class="font-bold" id="timer">00:00</div>
+              </div>
+            </div>
+            <div class="power-section" id="powerArea">
+              <div class="toggle-switch" id="powerToggle" onclick="togglePower()"><div class="toggle-handle"></div></div>
+              <div class="flex items-center gap-2">
+                <span class="text-[7px] font-bold uppercase" id="powerText" style="color:var(--pt)">Power</span>
+                <div class="status-lamp" id="mainLamp"></div>
+              </div>
+            </div>
+            <div class="button-bank">
+              <button class="skeuo-btn" onclick="handlePress(this,'play')" type="button"><div class="icon play-icon"></div></button>
+              <button class="skeuo-btn" onclick="handlePress(this,'pause')" type="button"><div class="icon pause-icon"><div class="pause-bar"></div><div class="pause-bar"></div></div></button>
+              <button class="skeuo-btn" onclick="handlePress(this,'stop')" type="button"><div class="icon stop-icon"></div></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flip-nav-container">
+        <button class="flip-nav-btn" onclick="flipVinyl()">Flip Side</button>
+      </div>
+    </div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="album-header">
+        <div class="album-artist" id="sidebarArtist">Pink Floyd</div>
+        <h2 class="album-title" id="sidebarTitle">The Dark Side of the Moon</h2>
+        <p class="album-year" id="sidebarMeta">1973 • Studio Album</p>
+      </div>
+      <div class="section">
+        <h3 class="text-[10px] font-bold uppercase tracking-widest opacity-30 mb-4">Side A</h3>
+        <ul class="tracklist" id="sideAList"></ul>
+        <h3 class="text-[10px] font-bold uppercase tracking-widest opacity-30 mt-6 mb-4">Side B</h3>
+        <ul class="tracklist" id="sideBList"></ul>
+      </div>
+    </aside>
+  </div>
+  <div class="archive-layer" id="archiveLayer" aria-hidden="true">
+    <iframe class="archive-frame" id="archiveFrame" src="about:blank" title="Archive"></iframe>
+  </div>
+
+  <script>
+    "use strict";
+
+    const $ = (id) => document.getElementById(id);
+    const overlayImage = $("vinylOverlayImage");
+    const SELECTED_ALBUM_KEY = "vinyl_selected_album_v1";
+    const RECORD_LOADED_KEY = "vinyl_record_loaded_v1";
+
+    if (overlayImage) {
+      // Show overlay only when image exists and is decoded.
+      overlayImage.addEventListener("load", () => {
+        overlayImage.style.display = "block";
+      });
+      overlayImage.addEventListener("error", () => {
+        overlayImage.style.display = "none";
+      });
+    }
+
+    let sidebarOpen = false;
+    const SIDEBAR_STATE_KEY = "vinyl_player_sidebar_open_v1";
+
+    function applySidebarState(isOpen){
+      const wrapper = $('mainWrapper');
+      const btn = $('sidebarBtn');
+      sidebarOpen = !!isOpen;
+      wrapper?.classList.toggle('sidebar-open', sidebarOpen);
+      btn?.classList.toggle('active', sidebarOpen);
+    }
+
+    function saveSidebarState(){
+      try { localStorage.setItem(SIDEBAR_STATE_KEY, sidebarOpen ? "1" : "0"); } catch(_) {}
+    }
+
+    function restoreSidebarState(){
+      let saved = null;
+      try { saved = localStorage.getItem(SIDEBAR_STATE_KEY); } catch(_) { saved = null; }
+      applySidebarState(saved === "1");
+    }
+
+    function updateScale(){
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // Margin rule:
+      // - Mobile: 16px
+      // - Everything else: 20% margin on all sides (axis-relative)
+      const isMobile = vw <= 640;
+      const edgeX = isMobile ? 16 : Math.round(vw * 0.20);
+      const edgeY = isMobile ? 16 : Math.round(vh * 0.20);
+
+      document.documentElement.style.setProperty('--edge-x', `${edgeX}px`);
+      document.documentElement.style.setProperty('--edge-y', `${edgeY}px`);
+
+      const availW = Math.max(0, vw - edgeX*2);
+      const availH = Math.max(0, vh - edgeY*2);
+
+      const baseW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w')) || 456;
+      const baseH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--h')) || 304;
+
+      const sW = availW / baseW;
+      const sH = availH / baseH;
+      const s = Math.max(0.6, Math.min(1.5, Math.min(sW, sH)));
+      document.documentElement.style.setProperty('--scale', String(s));
+    }
+
+    function toggleSidebar(e) {
+      if(e) e.stopPropagation();
+      applySidebarState(!sidebarOpen);
+      saveSidebarState();
+      updateScale();
+    }
+
+    function openArchive(e){
+      e?.preventDefault();
+      savePlaybackState();
+      if(archiveFrame && archiveFrame.src === "about:blank"){
+        archiveFrame.src = "archive.html?embedded=1";
+      }
+      archiveLayer?.classList.add("open");
+      archiveLayer?.setAttribute("aria-hidden","false");
+    }
+
+    function closeArchiveLayer(){
+      archiveLayer?.classList.remove("open");
+      archiveLayer?.setAttribute("aria-hidden","true");
+      savePlaybackState();
+    }
+
+    const WARM_FLAG_KEY = "vinyl_assets_warmed_v1";
+    function warmArchiveResourcesOnce(){
+      try {
+        if (localStorage.getItem(WARM_FLAG_KEY) === "1") return;
+      } catch(_) {}
+      const warm = (url, mode = "same-origin") => {
+        try { fetch(url, { cache: "force-cache", mode }).catch(()=>{}); } catch(_) {}
+      };
+      warm("archive.html");
+      warm("vinyl-player.html");
+      warm("sjaj-overlay.png");
+      warm("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "no-cors");
+      try { localStorage.setItem(WARM_FLAG_KEY, "1"); } catch(_) {}
+    }
+
+    const setTheme=(t)=>{
+      document.body.dataset.theme=t;
+      const sub = $("editionSub");
+      if(sub) {
+        sub.textContent=t==="dark"?"STEALTH EDITION":"ANALOG MASTER";
+        sub.style.opacity=t==="dark"?".3":".5";
+      }
+      localStorage.setItem("nosac_theme",t);
+      syncBackLabelFromFront();
+    };
+
+    function toggleTheme(e) {
+      if(e) e.stopPropagation();
+      setTheme(document.body.dataset.theme==="light"?"dark":"light");
+    }
+
+    setTheme(localStorage.getItem("nosac_theme")==="dark"?"dark":"light");
+
+    const PLAYBACK_STATE_KEY = "vinyl_player_playback_state_v1";
+    let powered=false,playing=false,base=1,target=0,speed=0,rot=0;
+    let currentSide="A";
+    let currentAlbumName="";
+    let arm=0,lastArm=18.6,playT=null;
+    let sideDurations={A:1175,B:1410}; // fallback dok ne procitamo trajanja fajlova
+    const ARM_REST=0;
+    let ARM_PLAY_START=18.6,ARM_PLAY_END=35;
+    let playStartMs=null,elapsedMs=0;
+    let albumTracks=[];
+    let tracksBySide={A:[],B:[]};
+    let trackDurationsSec=[];
+    let currentTrackIndex=0;
+    let resumeDeckOnLoad=false;
+    const deckAudio = new Audio();
+    deckAudio.preload = "metadata";
+    const startCueAudio = new Audio("https://www.dropbox.com/scl/fi/wb9ttnfcipacn418rvvmv/Start-playing.mp3?rlkey=u2k5vp11fovju3msssy8f5fcr&st=rsgjsjkt&raw=1");
+    startCueAudio.preload = "auto";
+    startCueAudio.volume = 0.9;
+    const vinylNoiseAudio = new Audio("https://www.dropbox.com/scl/fi/uhh6rkx7sg86ferhv3zuh/Vinyl-noise.mp3?rlkey=rr190umnwfqnqsztowrjdv17q&st=59vgu0he&raw=1");
+    vinylNoiseAudio.preload = "auto";
+    vinylNoiseAudio.loop = true;
+    vinylNoiseAudio.volume = 0.22;
+    const endSound = new Audio("https://www.dropbox.com/scl/fi/zrlf8m40z5vkhvylqysbp/Playing-end.mp3?rlkey=20rsof7yopxx9lx8zzh1w5cjg&st=38s466sp&raw=1");
+    endSound.preload = "auto";
+    endSound.volume = 0.9;
+    let playStartToken = 0;
+    let targetVolume = 0.8;
+    let armDrag = false;
+    let wasPlayingBeforeArmDrag = false;
+
+    const record=$("vinylRecord"),recordBack=$("vinylRecordBack"),platter=$("platter"),timer=$("timer"),rod=$("tonearmRod"),sideDisplay=$("sideDisplay"),sideStamp=$("sideStamp"),labelSideText=$("labelSideText"),nowPlayingLabel=$("nowPlayingLabel");
+    const labelTitle=$("labelTitle"),labelBrand=$("labelBrand"),labelMeta=$("labelMeta"),vinylLabel=$("vinylLabel");
+    const sidebarArtist=$("sidebarArtist"),sidebarTitle=$("sidebarTitle"),sidebarMeta=$("sidebarMeta");
+    const sideAListEl=$("sideAList"),sideBListEl=$("sideBList");
+    const tonearmBaseEl=document.querySelector(".tonearm-base");
+    const tonearmHeadEl=document.querySelector(".headshell-pro");
+    const recordStageEl=$("recordStage");
+    const archiveLayer=$("archiveLayer");
+    const archiveFrame=$("archiveFrame");
+
+    function setRecordRotation(deg){
+      if(record) record.style.transform = `rotate(${deg}deg)`;
+      if(recordBack) recordBack.style.transform = `rotateX(180deg) rotate(${deg}deg) scaleX(-1)`;
+    }
+    function syncBackLabelFromFront(){
+      const frontLabel = $("vinylLabel");
+      const backLabel = $("vinylLabelBack");
+      if(!frontLabel || !backLabel) return;
+      const clone = frontLabel.cloneNode(true);
+      clone.removeAttribute("id");
+      clone.querySelectorAll("[id]").forEach((el)=>el.removeAttribute("id"));
+      const backSide = clone.querySelector(".label-side");
+      if(backSide) backSide.textContent = "SIDE B";
+      backLabel.innerHTML = clone.innerHTML;
+      const style = getComputedStyle(frontLabel);
+      backLabel.style.background = style.background;
+      backLabel.style.border = style.border;
+      backLabel.style.boxShadow = style.boxShadow;
+    }
+
+    function setArmTransform(deg){
+      if(rod) rod.style.transform = `rotate(${deg}deg)`;
+    }
+    function setArmTransition(value){
+      if(rod) rod.style.transition = value;
+    }
+    function armFromElapsedMs(ms){
+      return armForElapsed(ms, getSideDuration());
+    }
+    function moveArmToRest(ms=900){
+      setArmTransition(`transform ${ms}ms cubic-bezier(.445,.05,.55,.95)`);
+      arm = ARM_REST;
+      setArmTransform(arm);
+    }
+    function moveArmToPlayEdge(ms=620){
+      setArmTransition(`transform ${ms}ms cubic-bezier(.445,.05,.55,.95)`);
+      arm = ARM_PLAY_START;
+      setArmTransform(arm);
+      lastArm = ARM_PLAY_START;
+    }
+    function recalcArmRangeFromGeometry(){
+      if(!tonearmBaseEl || !record) return;
+      const pivotRect = tonearmBaseEl.getBoundingClientRect();
+      const recordRect = record.getBoundingClientRect();
+      const labelRect = vinylLabel ? vinylLabel.getBoundingClientRect() : null;
+      if(!pivotRect.width || !recordRect.width) return;
+
+      const px = pivotRect.left + pivotRect.width/2;
+      const py = pivotRect.top + pivotRect.height/2;
+      const cx = recordRect.left + recordRect.width/2;
+      const cy = recordRect.top + recordRect.height/2;
+
+      const vx = px - cx;
+      const vy = py - cy;
+      const len = Math.hypot(vx, vy) || 1;
+      const ux = vx / len;
+      const uy = vy / len;
+
+      const edgePad = 0;
+      const labelPad = 2;
+      const outerR = Math.max(4, (recordRect.width * 0.5) - edgePad);
+      const labelR = labelRect ? (labelRect.width * 0.5) : (recordRect.width * 0.165);
+      // Keep arm travel at the outer edge region only.
+      const innerR = Math.max(4, labelR + labelPad, outerR * 0.9);
+
+      const toArmDeg = (tx, ty)=>{
+        const raw = Math.atan2(ty - py, tx - px) * 180 / Math.PI;
+        return raw - 90;
+      };
+
+      const startDeg = toArmDeg(cx + ux * outerR, cy + uy * outerR);
+      const endDeg = toArmDeg(cx + ux * innerR, cy + uy * innerR);
+      ARM_PLAY_START = Math.max(8, Math.min(52, startDeg));
+      ARM_PLAY_END = Math.max(ARM_PLAY_START + 2, Math.min(58, endDeg));
+      if(!Number.isFinite(ARM_PLAY_START) || !Number.isFinite(ARM_PLAY_END)){
+        ARM_PLAY_START = 18.6;
+        ARM_PLAY_END = 35;
+      }
+    }
+
+    function setupSlider(handleId,wellId,step,cb){
+      const h=$(handleId),w=$(wellId);let drag=false;
+      let lastP=50;
+      const move=e=>{
+        if(!drag) return;
+        const r=w.getBoundingClientRect();
+        const y=(e.touches?e.touches[0].clientY:e.clientY);
+        let p=((y-r.top)/r.height)*100;p=Math.max(10,Math.min(90,p));
+        if(step){
+          // Slight "weight" while dragging before final snap.
+          p = lastP + (p - lastP) * 0.35;
+        }
+        lastP=p;
+        h.style.transition="none";
+        h.style.top=p+"%";cb(p,false);
+      };
+      const start=e=>{drag=true; e?.cancelable && e.preventDefault();};
+      const stop=()=>{
+        if(!drag) return;
+        drag=false;
+        let p = lastP;
+        if(step){p=p<30?10:p<70?50:90;}
+        h.style.transition="top 160ms cubic-bezier(0.22,1,0.36,1)";
+        h.style.top=p+"%";
+        cb(p,true);
+      };
+      h.addEventListener("mousedown",start);window.addEventListener("mousemove",move);window.addEventListener("mouseup",stop);
+      h.addEventListener("touchstart",start,{passive:false});window.addEventListener("touchmove",move,{passive:false});window.addEventListener("touchend",stop);
+    }
+
+    const volumeFromHandlePercent=(p)=>{
+      const v = 1 - ((p - 10) / 80);
+      return Math.max(0, Math.min(1, v));
+    };
+
+    const applyDeckVolume=(v)=>{
+      targetVolume = v;
+      deckAudio.volume = v;
+      startCueAudio.volume = Math.max(0.25, Math.min(1, v));
+      vinylNoiseAudio.volume = Math.max(0.08, Math.min(0.45, v * 0.28));
+    };
+    const syncVinylNoise=()=>{
+      const shouldPlay = powered && playing && hasLoadedVinyl();
+      if(shouldPlay){
+        if(vinylNoiseAudio.paused){
+          vinylNoiseAudio.play().catch(()=>{});
+        }
+      } else if(!vinylNoiseAudio.paused){
+        vinylNoiseAudio.pause();
+      }
+    };
+
+    setupSlider("speedHandle","speedWell",true,(p,isFinal)=>{
+      if(!isFinal) return;
+      base=p===10?1.36:p===50?1:p===90?0.758:1;
+      if(playing&&playStartMs!=null) target=base;
+      if(!deckAudio.paused){
+        deckAudio.playbackRate = Math.max(0.03, Math.min(3, base));
+      }
+      startCueAudio.playbackRate = Math.max(0.6, Math.min(2.5, base));
+    });
+    let volumeDisplayTimer = null;
+    const showVolumeOnDisplay = (v)=>{
+      const pct = Math.round(Math.max(0, Math.min(1, v)) * 100);
+      if(nowPlayingLabel) nowPlayingLabel.textContent = "Volume";
+      if(sideDisplay) sideDisplay.textContent = `${pct}%`;
+      if(volumeDisplayTimer) clearTimeout(volumeDisplayTimer);
+      volumeDisplayTimer = setTimeout(()=>{
+        volumeDisplayTimer = null;
+        syncDisplay();
+      }, 900);
+    };
+    setupSlider("volHandle","volWell",false,(p)=>{
+      applyDeckVolume(volumeFromHandlePercent(p));
+      showVolumeOnDisplay(volumeFromHandlePercent(p));
+    });
+    applyDeckVolume(volumeFromHandlePercent(20));
+
+    const fmtTime=(sec)=>{
+      sec=Math.max(0, Math.floor(sec));
+      const m=String(Math.floor(sec/60)).padStart(2,"0");
+      const s=String(sec%60).padStart(2,"0");
+      return `${m}:${s}`;
+    };
+
+    const getSideDuration=()=>sideDurations[currentSide] || sideDurations.A || 0;
+
+    const parseTrackTitle=(pathOrName)=>{
+      const fileName = String(pathOrName || "").split("/").pop() || "";
+      return fileName.replace(/^\d+\.\s*/, "").replace(/\.mp3$/i, "").trim();
+    };
+
+    const getSideRange=(side)=>{
+      if(side==="A"){
+        return {start:0,end:tracksBySide.A.length-1};
+      }
+      return {start:tracksBySide.A.length,end:albumTracks.length-1};
+    };
+
+    const ensureTrackIndexInCurrentSide=()=>{
+      const range=getSideRange(currentSide);
+      if(currentTrackIndex<range.start || currentTrackIndex>range.end){
+        currentTrackIndex=range.start;
+      }
+    };
+
+    const setDeckSourceByIndex=(idx)=>{
+      if(!albumTracks[idx]) return;
+      const encoded=encodeURI(albumTracks[idx]);
+      if(deckAudio.src !== new URL(encoded, window.location.href).href){
+        deckAudio.src = encoded;
+      }
+    };
+
+    const formatTrackDur=(sec)=>{
+      const s=Math.max(0,Math.floor(sec||0));
+      const m=Math.floor(s/60);
+      const ss=String(s%60).padStart(2,"0");
+      return `${m}:${ss}`;
+    };
+
+    const renderSidebarTrackLists=()=>{
+      const makeItems=(list, baseIndex)=>list.map((src,i)=>{
+        const title=parseTrackTitle(src);
+        const n=String(i+1).padStart(2,"0");
+        const d = trackDurationsSec[baseIndex+i];
+        return `<li class="track-item"><span class="track-name">${n}. ${title}</span><span class="track-dur">${d?formatTrackDur(d):"--:--"}</span></li>`;
+      }).join("");
+      if(sideAListEl) sideAListEl.innerHTML = makeItems(tracksBySide.A,0);
+      if(sideBListEl) sideBListEl.innerHTML = makeItems(tracksBySide.B,tracksBySide.A.length);
+    };
+
+    const splitAlbumSides=(tracks)=>{
+      const half=Math.ceil(tracks.length/2);
+      tracksBySide={
+        A: tracks.slice(0,half),
+        B: tracks.slice(half)
+      };
+      currentTrackIndex=0;
+      renderSidebarTrackLists();
+      ensureTrackIndexInCurrentSide();
+    };
+
+    const loadSideDurationsFromMetadata=async()=>{
+      const readDuration=(src)=>new Promise((resolve)=>{
+        const a=new Audio();
+        a.preload="metadata";
+        a.src=encodeURI(src);
+        const done=(value)=>resolve(Number.isFinite(value)&&value>0?value:180);
+        a.addEventListener("loadedmetadata",()=>done(a.duration),{once:true});
+        a.addEventListener("error",()=>done(180),{once:true});
+        setTimeout(()=>done(180),2500);
+      });
+      const durations=await Promise.all(albumTracks.map(readDuration));
+      trackDurationsSec = durations.map((d)=>Math.round(d));
+      const half=tracksBySide.A.length;
+      sideDurations={
+        A: Math.round(durations.slice(0,half).reduce((s,v)=>s+v,0)),
+        B: Math.round(durations.slice(half).reduce((s,v)=>s+v,0))
+      };
+      if(!sideDurations.B) sideDurations.B=sideDurations.A;
+      renderSidebarTrackLists();
+      setTimer(Math.max(0,getSideDuration()-Math.floor(elapsedMs/1000)));
+    };
+
+    const playDeckTrack=async()=>{
+      ensureTrackIndexInCurrentSide();
+      setDeckSourceByIndex(currentTrackIndex);
+      try { await deckAudio.play(); } catch(_) {}
+    };
+
+    const pauseDeckTrack=()=>{ try { deckAudio.pause(); } catch(_) {} };
+    const stopStartCue=()=>{
+      try { startCueAudio.pause(); } catch(_) {}
+      try { startCueAudio.currentTime = 0; } catch(_) {}
+    };
+    const playDeckWithCue=async()=>{
+      const token = ++playStartToken;
+      stopStartCue();
+      try { await startCueAudio.play(); } catch(_) {}
+      await sleep(500);
+      if(token !== playStartToken || !playing) return;
+      await playDeckTrack();
+    };
+
+    const stopDeckTrack=()=>{
+      playStartToken += 1;
+      stopStartCue();
+      applyDeckVolume(targetVolume);
+      try { deckAudio.pause(); } catch(_) {}
+      try { deckAudio.currentTime = 0; } catch(_) {}
+      ensureTrackIndexInCurrentSide();
+      setDeckSourceByIndex(currentTrackIndex);
+    };
+
+    const nextDeckTrackInSide=()=>{
+      const range=getSideRange(currentSide);
+      if(currentTrackIndex < range.end){
+        currentTrackIndex += 1;
+        return true;
+      }
+      return false;
+    };
+
+    const syncTrackFromElapsed=()=>{
+      if(!albumTracks.length) return;
+      const sideTracks = currentSide === "A" ? tracksBySide.A : tracksBySide.B;
+      const sideStart = currentSide === "A" ? 0 : tracksBySide.A.length;
+      let remain = Math.max(0, elapsedMs / 1000);
+      for(let i=0;i<sideTracks.length;i++){
+        const globalIdx = sideStart + i;
+        const dur = Number(trackDurationsSec[globalIdx] || 180);
+        if(remain <= dur || i === sideTracks.length - 1){
+          currentTrackIndex = globalIdx;
+          setDeckSourceByIndex(currentTrackIndex);
+          try { deckAudio.currentTime = Math.max(0, Math.min(dur - 0.05, remain)); } catch(_) {}
+          return;
+        }
+        remain -= dur;
+      }
+    };
+
+    const armForElapsed=(elapsed, sideDurSec)=>{
+      const sideDurMs = Math.max(1, sideDurSec * 1000);
+      const p = Math.min(1, Math.max(0, elapsed / sideDurMs));
+      return ARM_PLAY_START + (ARM_PLAY_END - ARM_PLAY_START) * p;
+    };
+
+    const setTimer=(sec)=>{
+      timer.textContent=fmtTime(sec);
+    };
+
+    const hasLoadedVinyl=()=>!document.body.classList.contains("no-record");
+
+    const applyNoRecordUi=()=>{
+      document.body.classList.add("no-record");
+      playing = false;
+      target = 0;
+      speed = 0;
+      playStartMs = null;
+      elapsedMs = 0;
+      currentTrackIndex = 0;
+      currentSide = "A";
+      rot = 0;
+      setRecordRotation(0);
+      arm = ARM_REST;
+      lastArm = ARM_PLAY_START;
+      setArmTransition("none");
+      setArmTransform(arm);
+      if(nowPlayingLabel) nowPlayingLabel.textContent = "";
+      if(sideDisplay) sideDisplay.textContent = "No vinyl";
+      if(sideStamp) sideStamp.textContent = "";
+      if(labelSideText) labelSideText.textContent = "SIDE A";
+      setTimer(0);
+      stopStartCue();
+      stopDeckTrack();
+      try { vinylNoiseAudio.pause(); vinylNoiseAudio.currentTime = 0; } catch(_) {}
+      document.querySelectorAll(".skeuo-btn").forEach((b)=>b.classList.remove("active"));
+      updatePowerUi();
+    };
+
+    const syncDisplay=()=>{
+      if(!hasLoadedVinyl()){
+        if(nowPlayingLabel) nowPlayingLabel.textContent = "";
+        if(sideDisplay) sideDisplay.textContent = "No vinyl";
+        if(sideStamp) sideStamp.textContent = "";
+        if(labelSideText) labelSideText.textContent = "SIDE A";
+        return;
+      }
+      if(nowPlayingLabel) nowPlayingLabel.textContent = "Playing";
+      if(sideDisplay) sideDisplay.textContent=`Side ${currentSide}`;
+      if(sideStamp) sideStamp.textContent=`SIDE ${currentSide}`;
+      if(labelSideText) labelSideText.textContent=`SIDE ${currentSide}`;
+      syncBackLabelFromFront();
+    };
+    deckAudio.addEventListener("ended", async ()=>{
+      if(!playing) return;
+      if(nextDeckTrackInSide()){
+        await playDeckTrack();
+      } else {
+        handlePress(null,"stop");
+      }
+    });
+
+    const isHexColor=(value)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value || "");
+    const normalizeHexColor=(hex)=>{
+      if(!isHexColor(hex)) return null;
+      if(hex.length === 4){
+        return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`.toLowerCase();
+      }
+      return hex.toLowerCase();
+    };
+    const mixHexWithWhite=(hex, amount=0.85)=>{
+      const norm = normalizeHexColor(hex);
+      if(!norm) return null;
+      const p = Math.max(0, Math.min(1, amount));
+      const r = parseInt(norm.slice(1,3),16);
+      const g = parseInt(norm.slice(3,5),16);
+      const b = parseInt(norm.slice(5,7),16);
+      const nr = Math.round(r + (255 - r) * p);
+      const ng = Math.round(g + (255 - g) * p);
+      const nb = Math.round(b + (255 - b) * p);
+      return `rgb(${nr}, ${ng}, ${nb})`;
+    };
+    const mixHexWithBlack=(hex, amount=0.12)=>{
+      const norm = normalizeHexColor(hex);
+      if(!norm) return null;
+      const p = Math.max(0, Math.min(1, amount));
+      const r = parseInt(norm.slice(1,3),16);
+      const g = parseInt(norm.slice(3,5),16);
+      const b = parseInt(norm.slice(5,7),16);
+      const nr = Math.round(r * (1 - p));
+      const ng = Math.round(g * (1 - p));
+      const nb = Math.round(b * (1 - p));
+      return `rgb(${nr}, ${ng}, ${nb})`;
+    };
+    let selectedAlbumColorHex = null;
+    const applyVinylLabelThemeColor=()=>{
+      if(!vinylLabel || !selectedAlbumColorHex || !isHexColor(selectedAlbumColorHex)) return;
+      const themedColor = mixHexWithWhite(selectedAlbumColorHex, 0.25);
+      vinylLabel.style.background = themedColor;
+      vinylLabel.style.border = "2px solid rgba(0,0,0,.24)";
+      vinylLabel.style.boxShadow = "0 0 6px rgba(0,0,0,.26)";
+      const title = $("labelTitle");
+      if (title) title.style.color = "#c8c8c8";
+      const sub = $("editionSub");
+      if (sub) {
+        sub.style.color = "#bababa";
+        sub.style.opacity = ".65";
+      }
+    };
+
+    function updatePowerUi(){
+      $("powerToggle")?.classList.toggle("on", powered);
+      $("powerArea")?.classList.toggle("on", powered);
+      $("displayArea")?.classList.toggle("on", powered);
+    }
+
+    function updateSpeedHandleFromBase(){
+      const h = $("speedHandle");
+      if(!h) return;
+      const top = Math.abs(base - 1.36) < 0.02 ? 10 : Math.abs(base - 1) < 0.02 ? 50 : 90;
+      h.style.top = `${top}%`;
+    }
+
+    function getEffectiveElapsedMs(){
+      if(!playing || playStartMs == null) return elapsedMs;
+      return elapsedMs + (performance.now() - playStartMs) * base;
+    }
+
+    function savePlaybackState(){
+      const state = {
+        powered,
+        playing,
+        currentSide,
+        albumName: currentAlbumName || "",
+        base,
+        elapsedMs: getEffectiveElapsedMs(),
+        rot,
+        currentTrackIndex,
+        deckCurrentTime: Number.isFinite(deckAudio.currentTime) ? deckAudio.currentTime : 0,
+        sideDurations,
+        savedAtEpochMs: Date.now()
+      };
+      try { localStorage.setItem(PLAYBACK_STATE_KEY, JSON.stringify(state)); } catch(_) {}
+    }
+
+    function restorePlaybackState(){
+      let state = null;
+      try { state = JSON.parse(localStorage.getItem(PLAYBACK_STATE_KEY) || "null"); } catch(_) { state = null; }
+      if(!state) return false;
+
+      currentSide = state.currentSide === "B" ? "B" : "A";
+      currentAlbumName = typeof state.albumName === "string" ? state.albumName : "";
+      base = typeof state.base === "number" ? state.base : 1;
+      powered = !!state.powered;
+      rot = typeof state.rot === "number" ? state.rot : 0;
+      if(state.sideDurations && typeof state.sideDurations === "object"){
+        sideDurations = {
+          A: Number(state.sideDurations.A || sideDurations.A || 0),
+          B: Number(state.sideDurations.B || sideDurations.B || 0)
+        };
+      }
+      setRecordRotation(rot);
+      updateSpeedHandleFromBase();
+      syncDisplay();
+      updatePowerUi();
+
+      const sideDurMs = getSideDuration() * 1000;
+      const awayMs = Math.max(0, Date.now() - (state.savedAtEpochMs || Date.now()));
+      const initialElapsed = Math.max(0, Math.min(sideDurMs, (state.elapsedMs || 0) + (state.playing ? awayMs * base : 0)));
+      elapsedMs = initialElapsed;
+      const remain = Math.max(0, getSideDuration() - Math.floor(initialElapsed / 1000));
+      setTimer(remain);
+
+      arm = armFromElapsedMs(initialElapsed);
+      setArmTransform(arm);
+      setArmTransition("none");
+
+      if(state.playing && initialElapsed < sideDurMs){
+        playing = true;
+        target = base;
+        speed = base;
+        playStartMs = performance.now();
+        currentTrackIndex = Number.isFinite(state.currentTrackIndex) ? Number(state.currentTrackIndex) : currentTrackIndex;
+        ensureTrackIndexInCurrentSide();
+        resumeDeckOnLoad = true;
+      } else {
+        playing = false;
+        target = 0;
+        speed = 0;
+        playStartMs = null;
+        currentTrackIndex = Number.isFinite(state.currentTrackIndex) ? Number(state.currentTrackIndex) : currentTrackIndex;
+        ensureTrackIndexInCurrentSide();
+        resumeDeckOnLoad = false;
+      }
+      if(Number.isFinite(state.deckCurrentTime)) {
+        try { deckAudio.currentTime = Math.max(0, Number(state.deckCurrentTime)); } catch(_) {}
+      }
+      return true;
+    }
+
+    function applyAlbumFromQuery(selectedOverride = null) {
+      let selectedFromStorage = selectedOverride;
+      if(!selectedFromStorage){
+        try {
+          selectedFromStorage = JSON.parse(localStorage.getItem(SELECTED_ALBUM_KEY) || "null");
+        } catch(_) { selectedFromStorage = null; }
+      }
+      const params = new URLSearchParams(window.location.search);
+      const hasQuerySelection = !!(params.get("name") || params.get("album"));
+      if(!selectedOverride && !hasQuerySelection){
+        currentAlbumName = "";
+        albumTracks = [];
+        tracksBySide = {A:[],B:[]};
+        trackDurationsSec = [];
+        if(sideAListEl) sideAListEl.innerHTML = `<li class="track-item empty-track-item"><div class="empty-track-message"><span class="empty-track-title">No vinyl selected</span><span class="empty-track-subtitle">Go to archive and find something groovy</span></div></li>`;
+        if(sideBListEl) sideBListEl.innerHTML = "";
+        if(sidebarTitle) sidebarTitle.textContent = "";
+        if(sidebarArtist) sidebarArtist.textContent = "";
+        if(sidebarMeta) sidebarMeta.textContent = "";
+        try { localStorage.setItem(RECORD_LOADED_KEY, "0"); } catch(_) {}
+        applyNoRecordUi();
+        return {applied:false, fromSelection:false};
+      }
+      const name = (selectedOverride?.name || params.get("name") || params.get("album") || selectedFromStorage?.name);
+      const author = (selectedOverride?.author || params.get("author") || selectedFromStorage?.author);
+      const duration = (selectedOverride?.duration || params.get("duration") || selectedFromStorage?.duration);
+      const color = (selectedOverride?.color || params.get("color") || selectedFromStorage?.color);
+      const rawTracks = selectedOverride?.tracks || selectedFromStorage?.tracks || [];
+      const tracks = Array.isArray(rawTracks) ? rawTracks : [];
+      if (!name) {
+        currentAlbumName = "";
+        albumTracks = [];
+        tracksBySide = {A:[],B:[]};
+        trackDurationsSec = [];
+        if(sideAListEl) sideAListEl.innerHTML = `<li class="track-item empty-track-item"><div class="empty-track-message"><span class="empty-track-title">No vinyl selected</span><span class="empty-track-subtitle">Go to archive and find something groovy</span></div></li>`;
+        if(sideBListEl) sideBListEl.innerHTML = "";
+        if(sidebarTitle) sidebarTitle.textContent = "";
+        if(sidebarArtist) sidebarArtist.textContent = "";
+        if(sidebarMeta) sidebarMeta.textContent = "";
+        try { localStorage.setItem(RECORD_LOADED_KEY, "0"); } catch(_) {}
+        applyNoRecordUi();
+        return {applied:false, fromSelection:false};
+      }
+      document.body.classList.remove("no-record");
+      recalcArmRangeFromGeometry();
+
+      if (labelBrand) labelBrand.textContent = String(name).toUpperCase().slice(0, 24);
+      if (labelTitle) labelTitle.textContent = (author || "UNKNOWN ARTIST").toUpperCase().slice(0, 22);
+      if (labelMeta) labelMeta.innerHTML = "DESIGN PORTFOLIO<br/>MILAN SAMARDZIC";
+      if (sidebarTitle) sidebarTitle.textContent = name;
+      if (sidebarArtist) sidebarArtist.textContent = author || "Unknown Artist";
+      if (sidebarMeta) sidebarMeta.textContent = duration ? `${duration} • Selected from Archive` : "Selected from Archive";
+      if (vinylLabel && isHexColor(color)) {
+        const brighterColor = mixHexWithWhite(color, 0.10);
+        vinylLabel.style.background = brighterColor;
+      }
+      currentAlbumName = String(name);
+      albumTracks = tracks.slice();
+      trackDurationsSec = [];
+      if(albumTracks.length){
+        splitAlbumSides(albumTracks);
+        currentTrackIndex = 0;
+        setDeckSourceByIndex(currentTrackIndex);
+        loadSideDurationsFromMetadata().catch(()=>{});
+      } else {
+        tracksBySide={A:[],B:[]};
+        renderSidebarTrackLists();
+      }
+      syncBackLabelFromFront();
+      try { localStorage.setItem(RECORD_LOADED_KEY, "1"); } catch(_) {}
+      const fromSelection = !!(selectedOverride || params.get("name") || params.get("album"));
+      return {applied:true, fromSelection};
+    }
+
+    async function applySelectedAlbumAndStart(selected){
+      if(!selected || !selected.name) return;
+      try { localStorage.setItem(SELECTED_ALBUM_KEY, JSON.stringify(selected)); } catch(_) {}
+      stopDeckTrack();
+      playing = false;
+      target = 0;
+      speed = 0;
+      playStartMs = null;
+      currentSide = "A";
+      currentTrackIndex = 0;
+      elapsedMs = 0;
+      rot = 0;
+      recalcArmRangeFromGeometry();
+      arm = ARM_REST;
+      setArmTransform(arm);
+      setRecordRotation(0);
+      applyAlbumFromQuery(selected);
+      ensureTrackIndexInCurrentSide();
+      setDeckSourceByIndex(currentTrackIndex);
+      syncDisplay();
+      setTimer(getSideDuration());
+      updatePowerUi();
+      document.body.classList.remove("no-record");
+      await runDropInAnimation();
+    }
+
+    function handleArchiveMessage(event){
+      const data = event?.data;
+      if(!data || typeof data !== "object") return;
+      if(data.type === "archive-close"){
+        closeArchiveLayer();
+      }
+      if(data.type === "archive-select-album" && data.album){
+        closeArchiveLayer();
+        applySelectedAlbumAndStart(data.album).catch(()=>{});
+      }
+    }
+
+    async function runDropInAnimation() {
+      const recordStage = $("recordStage");
+      const recordEl = $("vinylRecord");
+      const ENTRY_TO_CENTER_MS = 1480;
+      const LIFT_DOWN_MS = 760;
+      const ENTRY_SPIN_DEG = 720;
+      const prevTransition = recordStage ? recordStage.style.transition : "";
+      const prevRecordTransition = recordEl ? recordEl.style.transition : "";
+      const prevShadowAlpha = getComputedStyle(document.documentElement).getPropertyValue('--record-shadow-alpha').trim();
+      document.body.classList.add('is-flipping');
+      document.documentElement.style.setProperty('--record-shadow-alpha', '0');
+      if (recordStage) recordStage.style.transition = "none";
+      if (recordEl) {
+        recordEl.style.transition = "none";
+        recordEl.style.transform = "rotate(0deg)";
+      }
+
+      // Start outside left: oversized disk with slight tilt.
+      document.documentElement.style.setProperty('--drop-x', '-128vw');
+      document.documentElement.style.setProperty('--drop-rot', '-14deg');
+      document.documentElement.style.setProperty('--lift-scale', '1.52');
+      recordStage?.getBoundingClientRect();
+
+      if (recordStage) recordStage.style.transition = `transform ${ENTRY_TO_CENTER_MS}ms cubic-bezier(0.06, 0.84, 0.2, 1), filter 320ms cubic-bezier(0.22, 1, 0.36, 1)`;
+
+      requestAnimationFrame(() => {
+        if (recordEl) {
+          recordEl.style.transition = `transform ${ENTRY_TO_CENTER_MS}ms cubic-bezier(0.16, 0.72, 0.22, 1)`;
+          recordEl.style.transform = `rotate(${ENTRY_SPIN_DEG}deg)`;
+        }
+        document.documentElement.style.setProperty('--drop-x', '0px');
+        document.documentElement.style.setProperty('--drop-rot', '-1.4deg');
+        document.documentElement.style.setProperty('--lift-scale', '1.24');
+      });
+
+      await sleep(ENTRY_TO_CENTER_MS + 40);
+      if (recordEl) {
+        // Stop exactly at center arrival; 720deg lands on the same zero orientation.
+        recordEl.style.transition = "none";
+      }
+      rot = 0;
+
+      if (recordStage) {
+        recordStage.style.transition = `transform ${LIFT_DOWN_MS}ms cubic-bezier(0.42, 0, 0.58, 1), filter ${LIFT_DOWN_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      }
+      document.documentElement.style.setProperty('--drop-rot', '0deg');
+      document.documentElement.style.setProperty('--lift-scale', '1');
+      // Shadow rises gradually for the full landing phase.
+      document.documentElement.style.setProperty('--record-shadow-alpha', '.62');
+
+      // During landing, switch behind tonearm and start restoring shadow mid-flight.
+      const handoffMs = Math.max(120, Math.floor(LIFT_DOWN_MS * 0.72));
+      await sleep(handoffMs);
+      document.body.classList.remove('is-flipping');
+      await sleep((LIFT_DOWN_MS - handoffMs) + 40);
+
+      if (recordStage) recordStage.style.transition = prevTransition;
+      if (recordEl) recordEl.style.transition = prevRecordTransition;
+      document.documentElement.style.setProperty('--record-shadow-alpha', prevShadowAlpha || '.62');
+    }
+
+    function togglePower(){
+      const t=$("powerToggle"),a=$("powerArea");
+      powered=t.classList.toggle("on");a.classList.toggle("on");
+      $("displayArea").classList.toggle("on",powered);
+      if(!powered) handlePress(null,"stop");
+      syncVinylNoise();
+    }
+
+    function handlePress(btn,type){
+      if(!hasLoadedVinyl()) return;
+      if(!powered && type!=="stop"){
+        if(btn){btn.classList.add("active");setTimeout(()=>btn.classList.remove("active"),150)}
+        return;
+      }
+      document.querySelectorAll(".skeuo-btn").forEach(b=>b.classList.remove("active"));
+      if(btn && type!=="stop") btn.classList.add("active");
+
+      if(type==="stop"){
+        playStartToken += 1;
+        stopStartCue();
+        if(playT){clearTimeout(playT);playT=null;}
+        stopDeckTrack();
+        syncVinylNoise();
+        try { endSound.currentTime = 0; endSound.play().catch(()=>{}); } catch(_) {}
+        target=0;
+        playing=false;
+        playStartMs=null;
+        elapsedMs=0;
+        setTimer(getSideDuration());
+      lastArm=ARM_PLAY_START;
+      moveArmToRest(950);
+        return;
+      }
+      if(type==="play"){
+        if(playing || playT) return;
+        playStartToken += 1;
+        stopStartCue();
+        // Always start from the edge of current side when Play is pressed.
+        elapsedMs = 0;
+        ensureTrackIndexInCurrentSide();
+        setDeckSourceByIndex(currentTrackIndex);
+        try { deckAudio.currentTime = 0; } catch(_) {}
+        playing=false;
+        const sideDurSec = getSideDuration();
+        setTimer(sideDurSec);
+        target=0;
+        speed=0;
+        playStartMs=null;
+        recalcArmRangeFromGeometry();
+        moveArmToPlayEdge(620);
+        playT=setTimeout(()=>{
+          playT=null;
+          playing=true;
+          target=base;
+          speed=base;
+          setArmTransition("none");
+          playStartMs=performance.now();
+          playDeckTrack().catch(()=>{});
+          syncVinylNoise();
+        },620);
+        return;
+      }
+      if(type==="pause"){
+        playStartToken += 1;
+        stopStartCue();
+        if(playT){clearTimeout(playT);playT=null;}
+        pauseDeckTrack();
+        playStartMs=null;
+        target=0;
+        playing=false;
+        lastArm=arm;
+        syncVinylNoise();
+      }
+    }
+
+    let isFlipping=false;
+    let flipXDeg=0;
+    const sleep=(ms)=>new Promise(r=>setTimeout(r, ms));
+
+    async function flipVinyl(){
+      if(isFlipping) return;
+      isFlipping=true;
+
+      const flipBtn=document.querySelector('.flip-nav-btn');
+      const recordStage = $("recordStage");
+      const LIFT_UP_MS=620;
+      const FLIP_MS=620;
+      const FLIP_ANGLE_DEG=180;
+      const LIFT_DOWN_MS=760;
+      const FLIP_START_DELAY_MS=60;
+
+      flipBtn?.setAttribute('disabled','true');
+
+      try {
+        // If playing, return the arm first (stop does that)
+        const wasPlaying = playing || (playStartMs != null);
+        handlePress(null,'stop');
+        if(wasPlaying) await sleep(1250);
+
+        // Ensure record renders above tonearm while lifted/in flight.
+        document.body.classList.add('is-flipping');
+        const prevStageTransition = recordStage ? recordStage.style.transition : "";
+        document.documentElement.style.setProperty('--flip-x', `${flipXDeg}deg`);
+        if (recordStage) {
+          recordStage.style.transition = `transform ${LIFT_UP_MS}ms cubic-bezier(0.42, 0, 0.58, 1)`;
+        }
+        document.documentElement.style.setProperty('--lift-scale','1.46');
+        await sleep(FLIP_START_DELAY_MS);
+
+        // Flip starts gently while lift is already in progress.
+        if (recordStage) {
+          recordStage.style.transition = `transform ${FLIP_MS}ms ease-in-out`;
+        }
+        flipXDeg += FLIP_ANGLE_DEG;
+        document.documentElement.style.setProperty('--flip-x', `${flipXDeg}deg`);
+
+        // Switch side when disk reaches edge-on (around half-way).
+        await sleep(Math.floor(FLIP_MS * 0.5));
+        currentSide = currentSide === "A" ? "B" : "A";
+        syncDisplay();
+        ensureTrackIndexInCurrentSide();
+        setDeckSourceByIndex(currentTrackIndex);
+        speed = 0;
+        target = 0;
+        scratch = 0;
+        dragRec = false;
+        elapsedMs = 0;
+        setTimer(getSideDuration());
+
+        await sleep(Math.ceil(FLIP_MS * 0.5) + 20);
+        if (recordStage) {
+          recordStage.style.transition = `transform ${LIFT_DOWN_MS}ms cubic-bezier(0.42, 0, 0.58, 1)`;
+        }
+        document.documentElement.style.setProperty('--lift-scale','1');
+        const handoffMs = Math.max(120, Math.floor(LIFT_DOWN_MS * 0.72));
+        await sleep(handoffMs);
+        document.body.classList.remove('is-flipping');
+        await sleep((LIFT_DOWN_MS - handoffMs));
+        if (recordStage) recordStage.style.transition = prevStageTransition;
+      } finally {
+        document.body.classList.remove('is-flipping');
+        await sleep(120);
+        flipBtn?.removeAttribute('disabled');
+        isFlipping=false;
+      }
+    }
+
+    // Scratching
+    let dragRec=false,lastAng=0,scratch=0;
+    let wasPlayingBeforeScratch=false;
+    const ang=(e)=>{
+      const r=platter.getBoundingClientRect();
+      const cx=r.left+r.width/2,cy=r.top+r.height/2;
+      const x=(e.touches?e.touches[0].clientX:e.clientX),y=(e.touches?e.touches[0].clientY:e.clientY);
+      return Math.atan2(y-cy,x-cx)*180/Math.PI;
+    };
+    const ENABLE_RECORD_SCRATCH = true;
+    platter.addEventListener("mousedown",e=>{
+      if(!ENABLE_RECORD_SCRATCH) return;
+      dragRec=true;
+      lastAng=ang(e);
+      scratch=0;
+      wasPlayingBeforeScratch = playing;
+      if(wasPlayingBeforeScratch){
+        if(playT){clearTimeout(playT);playT=null;}
+        if(playStartMs!=null){
+          elapsedMs += (performance.now() - playStartMs) * Math.max(0.02, Math.min(3, Math.abs(speed || base || 1)));
+        }
+        playStartMs=null;
+        playing=false;
+        target=0;
+        pauseDeckTrack();
+      }
+    });
+    platter.addEventListener("touchstart",e=>{
+      if(!ENABLE_RECORD_SCRATCH) return;
+      dragRec=true;
+      lastAng=ang(e);
+      scratch=0;
+      wasPlayingBeforeScratch = playing;
+      if(wasPlayingBeforeScratch){
+        if(playT){clearTimeout(playT);playT=null;}
+        if(playStartMs!=null){
+          elapsedMs += (performance.now() - playStartMs) * Math.max(0.02, Math.min(3, Math.abs(speed || base || 1)));
+        }
+        playStartMs=null;
+        playing=false;
+        target=0;
+        pauseDeckTrack();
+      }
+    },{passive:true});
+    const onMove=e=>{
+      if(!dragRec) return;
+      const a=ang(e);let d=a-lastAng;if(d>180)d-=360;if(d<-180)d+=360;
+      scratch=d*.25;rot+=d;lastAng=a;
+      setRecordRotation(rot%360);
+      const sideMs = getSideDuration()*1000;
+      const scrubMs = d * 22;
+      elapsedMs = Math.max(0, Math.min(sideMs, elapsedMs + scrubMs));
+      setTimer(Math.max(0, getSideDuration()-Math.floor(elapsedMs/1000)));
+      syncTrackFromElapsed();
+      try { deckAudio.currentTime = Math.max(0, Number(deckAudio.currentTime || 0)); } catch(_) {}
+    };
+    window.addEventListener("mousemove",onMove);
+    window.addEventListener("touchmove",onMove,{passive:false});
+    const endDrag=()=>{
+      if(!dragRec) return;
+      dragRec=false;
+      speed = Math.max(0, Math.min(base, Math.abs(scratch)));
+      if(wasPlayingBeforeScratch){
+        playing = true;
+        target = base;
+        speed = Math.max(speed, base);
+        playStartMs = performance.now();
+        deckAudio.playbackRate = Math.max(0.03, Math.min(3, base));
+        playDeckTrack().catch(()=>{});
+      } else {
+        pauseDeckTrack();
+      }
+      wasPlayingBeforeScratch = false;
+    };
+    window.addEventListener("mouseup",endDrag);
+    window.addEventListener("touchend",endDrag);
+
+    function loop(){
+      if(playStartMs!=null) target = base;
+      if(!playing) target = 0;
+      if(!dragRec){
+        const accel = 0.035;
+        speed += (target - speed) * accel;
+        if(Math.abs(speed) > 0.0005){
+          rot += speed * 3.9;
+          setRecordRotation(rot);
+        }
+      }
+      if(!deckAudio.paused){
+        const rate = Math.max(0.03, Math.min(3, Math.abs(speed)));
+        deckAudio.playbackRate = rate;
+      }
+      if(playing && playStartMs!=null && !dragRec){
+        const now=performance.now();
+        const delta=now-playStartMs;
+        playStartMs=now;
+        const transportRate = Math.max(0.02, Math.min(3, Math.abs(speed)));
+        elapsedMs += delta * transportRate;
+
+        const sideDur=getSideDuration();
+        const remain = Math.max(0, sideDur - Math.floor(elapsedMs/1000));
+        setTimer(remain);
+        arm = armFromElapsedMs(elapsedMs);
+        setArmTransform(arm);
+        if(remain<=0){
+          playing=false;
+          target=0;
+          speed=0;
+          playStartMs=null;
+          elapsedMs=sideDur*1000;
+          setTimer(0);
+          syncVinylNoise();
+          try { endSound.currentTime = 0; endSound.play().catch(()=>{}); } catch(_) {}
+        }
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // Init
+    document.body.classList.add("no-record");
+    window.addEventListener("message", handleArchiveMessage);
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      const idle = window.requestIdleCallback || ((cb)=>setTimeout(cb, 60));
+      idle(() => warmArchiveResourcesOnce());
+      idle(() => {
+        if(archiveFrame && archiveFrame.src === "about:blank"){
+          archiveFrame.src = "archive.html?embedded=1";
+        }
+      });
+      restoreSidebarState();
+      syncDisplay();
+      setTimer(getSideDuration());
+      updateScale();
+      recalcArmRangeFromGeometry();
+      requestAnimationFrame(() => {
+        document.body.classList.remove("preload-sidebar");
+      });
+      updatePowerUi();
+      stopDeckTrack();
+      const albumApply = applyAlbumFromQuery();
+      if (albumTracks.length) {
+        ensureTrackIndexInCurrentSide();
+        setDeckSourceByIndex(currentTrackIndex);
+        if (resumeDeckOnLoad && powered) {
+          let st = null;
+          try { st = JSON.parse(localStorage.getItem(PLAYBACK_STATE_KEY) || "null"); } catch(_) { st = null; }
+          if(st && Number.isFinite(st.deckCurrentTime)){
+            try { deckAudio.currentTime = Math.max(0, Number(st.deckCurrentTime)); } catch(_) {}
+          }
+          playDeckTrack().catch(()=>{});
+        }
+      }
+      if (albumApply.applied && albumApply.fromSelection) {
+        playing = false;
+        target = 0;
+        speed = 0;
+        playStartMs = null;
+        currentSide = "A";
+        currentTrackIndex = 0;
+        elapsedMs = 0;
+        rot = 0;
+        arm = ARM_REST;
+        setArmTransform(arm);
+        setRecordRotation(0);
+        ensureTrackIndexInCurrentSide();
+        setDeckSourceByIndex(currentTrackIndex);
+        syncDisplay();
+        setTimer(getSideDuration());
+        updatePowerUi();
+        await runDropInAnimation();
+      }
+      loop();
+
+      // Basic sanity checks (debug-friendly)
+      console.assert(typeof toggleSidebar === 'function', 'toggleSidebar should be defined');
+      console.assert(typeof flipVinyl === 'function', 'flipVinyl should be defined');
+      console.assert(!!$('mainWrapper'), '#mainWrapper missing');
+      console.assert(!!$('mainCase'), '#mainCase missing');
+    });
+    window.addEventListener('resize', updateScale);
+    window.addEventListener('resize', recalcArmRangeFromGeometry);
+    window.addEventListener('pagehide', () => {
+      savePlaybackState();
+      saveSidebarState();
+    });
+    window.addEventListener('beforeunload', () => {
+      savePlaybackState();
+      saveSidebarState();
+    });
+  </script>
+</body>
+</html>

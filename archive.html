@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Vinil Arhiva - Touch Enabled</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700;900&display=swap');
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        body {
+            background-color: #020202;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            touch-action: none; /* Ključno za sprečavanje sistemskog zooma/scrolla */
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        #audio-hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.2);
+            z-index: 20;
+        }
+        #route-fade {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 200;
+            transition: opacity 420ms cubic-bezier(0.16, 1, 0.3, 1) 380ms;
+        }
+        #route-fade.on { opacity: 1; }
+
+        #play-button {
+            position: fixed;
+            pointer-events: auto;
+            display: none;
+            z-index: 100;
+            background: white;
+            color: black;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 10px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+            border: none;
+            opacity: 0;
+        }
+
+        #play-button.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #play-button:hover, #play-button:active {
+            transform: translate(-50%, -50%) scale(1.1);
+            background: #f0f0f0;
+        }
+        .top-nav-btn {
+            pointer-events: auto;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 0 12px;
+            height: 40px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: background 0.2s, filter 0.1s, transform 0.2s;
+            color: rgba(255,255,255,.9);
+            text-decoration: none;
+        }
+        .top-nav-btn:active { filter: brightness(0.8); transform: translateY(1px); }
+        .top-bar {
+            width: 100%;
+            padding: 40px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .counter-text {
+            text-align: left;
+            font-size: 12px;
+            opacity: 0.34;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <div id="route-fade" aria-hidden="true"></div>
+    <div id="audio-hint">Zvuk aktivan nakon interakcije</div>
+    <button id="play-button">PLAY</button>
+
+    <div class="ui-overlay">
+        <div class="top-bar">
+            <div class="counter-text" id="counter">
+                1 PLOCA
+            </div>
+            <a class="top-nav-btn" href="vinyl-player.html" aria-label="Open Player" id="playerNavLink">
+                Player
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const COLLECTION_MANIFEST_URL = "vinyl-collection.json";
+        const DEFAULT_COLLECTION = [
+            {
+                name: "SOB ROCK",
+                author: "JOHN MAYER",
+                color: "#2b3139",
+                duration: "",
+                folder: "Vinyl Collection/John Mayer - Sob Rock",
+                cover: "Vinyl Collection/John Mayer - Sob Rock/cover.jpg",
+                tracks: [
+                    "01. Last Train Home.mp3",
+                    "02. Shouldn't Matter but It Does.mp3",
+                    "03. New Light.mp3",
+                    "04. Why You No Love Me.mp3",
+                    "05. Wild Blue.mp3",
+                    "06. Shot in the Dark.mp3",
+                    "07. I Guess I Just Feel Like.mp3",
+                    "08. Til the Right One Comes.mp3",
+                    "09. Carry Me Away.mp3",
+                    "10. All I Want Is to Be With You.mp3"
+                ]
+            },
+            {
+                name: "RUBBER SOUL",
+                author: "THE BEATLES",
+                color: "#3a2c22",
+                duration: "",
+                folder: "Vinyl Collection/The Beatles - Rubber Soul (1965) [MP3 320] 88",
+                cover: "Vinyl Collection/The Beatles - Rubber Soul (1965) [MP3 320] 88/folder.jpg",
+                tracks: [
+                    "01. Drive My Car.mp3",
+                    "02. Norwegian Wood (This Bird Has Flown).mp3",
+                    "03. You Won't See Me.mp3",
+                    "04. Nowhere Man.mp3",
+                    "05. Think For Yourself.mp3",
+                    "06. The Word.mp3",
+                    "07. Michelle.mp3",
+                    "08. What Goes On.mp3",
+                    "09. Girl.mp3",
+                    "10. I'm Looking Through You.mp3",
+                    "11. In My Life.mp3",
+                    "12. Wait.mp3",
+                    "13. If I Needed Someone.mp3",
+                    "14. Run For Your Life.mp3"
+                ]
+            }
+        ];
+        let collection = [];
+
+        let scene, camera, renderer, groups = [];
+        const DISK_LAYER = 1; 
+
+        const scrollSensitivity = 850; 
+        let totalMeshes = 0;
+        let maxScroll = 0;
+
+        let targetScroll = 0;
+        let currentScroll = 0;
+        let lastIndex = 0; 
+        let interactiveIndex = -1; 
+        let openStates = [];
+        let pendingOpenIndex = -1; 
+        let isHovered = false;
+        let launchIndex = -1;
+        let launchStartMs = 0;
+        let launchTargetUrl = "";
+        let launchSelectedPayload = null;
+        let launchNavigated = false;
+        let playingIndex = -1;
+        let hasLoadedRecord = false;
+        const LAUNCH_MS = 620;
+        const WARM_FLAG_KEY = "vinyl_assets_warmed_v1";
+        const PLAYING_INDEX_KEY = "archive_playing_index_v1";
+        const SCROLL_STATE_KEY = "archive_scroll_state_v1";
+        const SELECTED_ALBUM_KEY = "vinyl_selected_album_v1";
+        const ARCHIVE_ALBUMS_KEY = "vinyl_archive_albums_v1";
+        const PLAYBACK_STATE_KEY = "vinyl_player_playback_state_v1";
+        const RECORD_LOADED_KEY = "vinyl_record_loaded_v1";
+        const routeFade = document.getElementById('route-fade');
+        const EMBEDDED = new URLSearchParams(window.location.search).get("embedded") === "1";
+        const archiveDeck = new Audio();
+        archiveDeck.preload = "metadata";
+        let bgBridge = {
+            active: false,
+            currentSide: "A",
+            currentTrackIndex: 0,
+            sideDurations: {A:1175,B:1410},
+            base: 1,
+            albumName: "",
+            tracks: [],
+            sideSplit: 0
+        };
+
+        // Touch varijable
+        let touchStartY = 0;
+        let isTouchMove = false;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const playBtn = document.getElementById('play-button');
+        const playerNavLink = document.getElementById('playerNavLink');
+
+        function normalizeCollectionItem(item) {
+            if (!item || typeof item !== "object") return null;
+            const tracks = Array.isArray(item.tracks) ? item.tracks.filter((t)=>typeof t === "string" && t.trim()) : [];
+            if (!tracks.length) return null;
+            return {
+                name: String(item.name || "UNKNOWN ALBUM").toUpperCase(),
+                author: String(item.author || "UNKNOWN ARTIST").toUpperCase(),
+                color: String(item.color || "#2b2b2b"),
+                duration: String(item.duration || ""),
+                folder: String(item.folder || ""),
+                cover: String(item.cover || ""),
+                tracks
+            };
+        }
+
+        function applyCollectionData(data) {
+            const normalized = Array.isArray(data) ? data.map(normalizeCollectionItem).filter(Boolean) : [];
+            collection = normalized;
+            totalMeshes = collection.length;
+            maxScroll = Math.max(0, (totalMeshes - 1) * scrollSensitivity);
+            openStates = new Array(totalMeshes).fill(false);
+            targetScroll = Math.max(0, Math.min(maxScroll, targetScroll));
+            currentScroll = Math.max(0, Math.min(maxScroll, currentScroll));
+        }
+
+        async function loadCollectionManifest() {
+            try {
+                const res = await fetch(COLLECTION_MANIFEST_URL, { cache: "no-store" });
+                if (!res.ok) throw new Error(`manifest status ${res.status}`);
+                const data = await res.json();
+                const parsed = Array.isArray(data) ? data : [];
+                if (parsed.length) {
+                    applyCollectionData(parsed);
+                    return;
+                }
+            } catch (_) {
+                // fallback below
+            }
+            try {
+                const raw = localStorage.getItem(ARCHIVE_ALBUMS_KEY);
+                if (raw) {
+                    const cached = JSON.parse(raw);
+                    if (Array.isArray(cached) && cached.length) {
+                        applyCollectionData(cached);
+                        return;
+                    }
+                }
+            } catch (_) {}
+            applyCollectionData(DEFAULT_COLLECTION);
+        }
+
+        let audioCtx;
+        
+        const openSound = new Audio();
+        openSound.src = 'https://www.dropbox.com/scl/fi/49rc5w3kdy7ijq9gc6xm7/Open-vinyl-sound.mp3?rlkey=suere2b0ewmokv8jdqivxosx7&st=bry4x0y3&raw=1';
+        openSound.volume = 0.3; 
+        openSound.load();
+
+        function playWoosh() {
+            openSound.pause();
+            openSound.currentTime = 0;
+            openSound.play().catch(e => {});
+        }
+
+        function easeInOutExpo(x) {
+            return x === 0 ? 0 : x === 1 ? 1 : x < 0.5 ? Math.pow(2, 20 * x - 10) / 2 : (2 - Math.pow(2, -20 * x + 10)) / 2;
+        }
+        function easeInCubic(x) {
+            return x * x * x;
+        }
+
+        function refreshRecordLoadedState() {
+            try {
+                hasLoadedRecord = localStorage.getItem(RECORD_LOADED_KEY) === "1";
+            } catch(_) {
+                hasLoadedRecord = false;
+            }
+            if (!hasLoadedRecord) {
+                playingIndex = -1;
+            }
+        }
+
+        function isPlayingLockedIndex(idx) {
+            return hasLoadedRecord && idx === playingIndex;
+        }
+
+        function getSelectedAlbumForBridge(){
+            try {
+                const selected = JSON.parse(localStorage.getItem(SELECTED_ALBUM_KEY) || "null");
+                if(selected && Array.isArray(selected.tracks) && selected.tracks.length){
+                    return selected;
+                }
+            } catch(_) {}
+            return null;
+        }
+
+        function saveBridgePlaybackState(playing){
+            if(!bgBridge.active) return;
+            const state = {
+                powered: true,
+                playing: !!playing,
+                currentSide: bgBridge.currentSide,
+                albumName: bgBridge.albumName,
+                base: bgBridge.base || 1,
+                elapsedMs: 0,
+                rot: 0,
+                currentTrackIndex: bgBridge.currentTrackIndex,
+                deckCurrentTime: Number.isFinite(archiveDeck.currentTime) ? archiveDeck.currentTime : 0,
+                sideDurations: bgBridge.sideDurations,
+                savedAtEpochMs: Date.now()
+            };
+            try { localStorage.setItem(PLAYBACK_STATE_KEY, JSON.stringify(state)); } catch(_) {}
+        }
+
+        function sideRangeForBridge(side){
+            if(side === "A"){
+                return {start:0, end:Math.max(0,bgBridge.sideSplit-1)};
+            }
+            return {start:bgBridge.sideSplit, end:Math.max(bgBridge.sideSplit,bgBridge.tracks.length-1)};
+        }
+
+        function ensureBridgeTrackInSide(){
+            const range = sideRangeForBridge(bgBridge.currentSide);
+            if(bgBridge.currentTrackIndex < range.start || bgBridge.currentTrackIndex > range.end){
+                bgBridge.currentTrackIndex = range.start;
+            }
+        }
+
+        function setBridgeSourceByIndex(idx){
+            const src = bgBridge.tracks[idx];
+            if(!src) return;
+            const encoded = encodeURI(src);
+            const absolute = new URL(encoded, window.location.href).href;
+            if(archiveDeck.src !== absolute){
+                archiveDeck.src = encoded;
+            }
+        }
+
+        function startArchiveBridgeFromState(){
+            let state = null;
+            try { state = JSON.parse(localStorage.getItem(PLAYBACK_STATE_KEY) || "null"); } catch(_) { state = null; }
+            if(!state || !state.playing) return;
+            try {
+                if(localStorage.getItem(RECORD_LOADED_KEY) !== "1") return;
+            } catch(_) {}
+            const selected = getSelectedAlbumForBridge();
+            if(!selected) return;
+            const albumName = String(selected.name || "");
+            if(String(state.albumName || "") !== albumName) return;
+            bgBridge.active = true;
+            bgBridge.albumName = albumName;
+            bgBridge.tracks = selected.tracks.slice();
+            bgBridge.sideSplit = Math.ceil(bgBridge.tracks.length / 2);
+            bgBridge.currentSide = state.currentSide === "B" ? "B" : "A";
+            bgBridge.currentTrackIndex = Number.isFinite(state.currentTrackIndex) ? Number(state.currentTrackIndex) : 0;
+            bgBridge.sideDurations = (state.sideDurations && typeof state.sideDurations === "object") ? state.sideDurations : bgBridge.sideDurations;
+            bgBridge.base = Number.isFinite(state.base) ? Number(state.base) : 1;
+            ensureBridgeTrackInSide();
+            setBridgeSourceByIndex(bgBridge.currentTrackIndex);
+            try { archiveDeck.currentTime = Math.max(0, Number(state.deckCurrentTime || 0)); } catch(_) {}
+            archiveDeck.playbackRate = bgBridge.base;
+            archiveDeck.play().catch(()=>{});
+        }
+
+        function ensureArchiveBridgePlayback(){
+            if(!bgBridge.active) return;
+            if(!archiveDeck.paused) return;
+            archiveDeck.play().catch(()=>{});
+        }
+
+        function playTick() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const duration = 0.04;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            
+            filter.type = 'highpass';
+            filter.frequency.setValueAtTime(1500, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + duration);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function generateVinylNormalMap(size = 1024) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgb(128, 128, 255)';
+            ctx.fillRect(0, 0, size, size);
+            const centerX = size / 2;
+            const centerY = size / 2;
+            for(let r = 180; r < 495; r += 1.3) {
+                const strength = Math.random() * 12 + 3; 
+                ctx.beginPath();
+                ctx.strokeStyle = `rgb(${128 + strength}, ${128}, 255)`;
+                ctx.lineWidth = 0.9;
+                ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function generateCoverTexture(item, size = 512) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = size; canvas.height = size;
+            ctx.fillStyle = item.color;
+            ctx.fillRect(0, 0, size, size);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.textAlign = 'left';
+            ctx.font = `900 ${size * 0.05}px Inter`;
+            ctx.fillText(item.name, size * 0.08, size * 0.12);
+            ctx.font = `400 ${size * 0.022}px Inter`;
+            ctx.globalAlpha = 0.4;
+            ctx.fillText(item.author || "", size * 0.08, size * 0.16);
+            ctx.font = `900 ${size * 0.015}px Inter`;
+            ctx.globalAlpha = 0.3;
+            ctx.fillText("ARCHIVE CAT. NR", size * 0.08, size * 0.22);
+            ctx.font = `100 ${size * 0.04}px Inter`;
+            ctx.globalAlpha = 0.7;
+            ctx.fillText(item.duration, size * 0.08, size * 0.27);
+            ctx.textAlign = 'right';
+            ctx.globalAlpha = 0.2;
+            ctx.font = `900 ${size * 0.025}px Inter`;
+            ctx.fillText("VOL. " + (collection.indexOf(item) + 1), size * 0.92, size * 0.92);
+            const texture = new THREE.CanvasTexture(canvas);
+            if(item.cover){
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0,0,size,size);
+                    ctx.drawImage(img,0,0,size,size);
+                    texture.needsUpdate = true;
+                };
+                img.src = encodeURI(item.cover);
+            }
+            return texture;
+        }
+
+        function generateArchiveLabelTexture(item, side = "A", size = 512) {
+            const toHex = (value) => {
+                if (typeof value !== "string") return null;
+                const v = value.trim();
+                if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return null;
+                if (v.length === 4) {
+                    return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`.toLowerCase();
+                }
+                return v.toLowerCase();
+            };
+            const mixHexWithWhite = (hex, amount = 0.10) => {
+                const norm = toHex(hex);
+                if (!norm) return "#efe9d8";
+                const p = Math.max(0, Math.min(1, amount));
+                const r = parseInt(norm.slice(1, 3), 16);
+                const g = parseInt(norm.slice(3, 5), 16);
+                const b = parseInt(norm.slice(5, 7), 16);
+                const nr = Math.round(r + (255 - r) * p);
+                const ng = Math.round(g + (255 - g) * p);
+                const nb = Math.round(b + (255 - b) * p);
+                return `rgb(${nr}, ${ng}, ${nb})`;
+            };
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            const c = size / 2;
+            const r = size * 0.49;
+
+            ctx.clearRect(0, 0, size, size);
+
+            ctx.beginPath();
+            ctx.arc(c, c, r, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fillStyle = mixHexWithWhite(item.color || "", 0.10);
+            ctx.fill();
+
+            ctx.strokeStyle = "#252525";
+            ctx.lineWidth = size * 0.0065;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(c, c, size * 0.462, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(24,24,24,0.8)";
+            ctx.lineWidth = size * 0.0038;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(c, c, size * 0.31, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(24,24,24,0.24)";
+            ctx.lineWidth = size * 0.003;
+            ctx.stroke();
+
+            const bandH = size * 0.13;
+            const bandTop = size * 0.435;
+            const bandInset = size * 0.048;
+            ctx.fillStyle = "#181818";
+            ctx.fillRect(bandInset, bandTop, size - bandInset * 2, bandH);
+            ctx.strokeStyle = "#1f1f1f";
+            ctx.lineWidth = size * 0.002;
+            ctx.strokeRect(bandInset, bandTop, size - bandInset * 2, bandH);
+
+            ctx.fillStyle = "#f1f1f1";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = `400 ${Math.round(4.3 * (size / 100))}px Inter`;
+            ctx.fillText("STEREO", size * 0.245, c);
+            ctx.fillText("33 RPM", size * 0.755, c);
+
+            ctx.fillStyle = "#f3f3f3";
+            ctx.font = `900 ${Math.round(5.8 * (size / 100))}px Inter`;
+            ctx.fillText((item.name || "").toUpperCase(), c, size * 0.24);
+
+            ctx.fillStyle = "#ececec";
+            ctx.font = `400 ${Math.round(3.9 * (size / 100))}px Inter`;
+            ctx.fillText((item.author || "").toUpperCase(), c, size * 0.305);
+
+            ctx.fillStyle = "#f1f1f1";
+            ctx.font = `400 ${Math.round(5.8 * (size / 100))}px Inter`;
+            ctx.fillText(`SIDE ${side}`, c, size * 0.647);
+
+            ctx.fillStyle = "#e9e9e9";
+            ctx.font = `300 ${Math.round(2.8 * (size / 100))}px Inter`;
+            ctx.fillText("DESIGN PORTFOLIO", c, size * 0.761);
+            ctx.fillText("MILAN SAMARDZIC", c, size * 0.792);
+
+            ctx.beginPath();
+            ctx.arc(c, c, size * 0.07, 0, Math.PI * 2);
+            ctx.fillStyle = "#181818";
+            ctx.fill();
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+
+        function createVinylDisk(item, diskNormalMap) {
+            const diskMat = new THREE.MeshStandardMaterial({ 
+                color: 0x050505, 
+                roughness: 0.28,
+                metalness: 0.75,
+                normalMap: diskNormalMap, 
+                normalScale: new THREE.Vector2(1.4, 1.4)
+            });
+            const geo = new THREE.CylinderGeometry(2.85, 2.85, 0.05, 64);
+            const disk = new THREE.Mesh(geo, diskMat);
+            disk.rotation.x = Math.PI / 2;
+            disk.name = "disk";
+            disk.layers.set(DISK_LAYER);
+            
+            const labelTexture = generateArchiveLabelTexture(item, "A", 512);
+            const labelGeo = new THREE.CircleGeometry(1.05, 64);
+            const labelMat = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.95, metalness: 0.0 });
+            const labelMesh = new THREE.Mesh(labelGeo, labelMat);
+            labelMesh.position.y = 0.026;
+            labelMesh.rotation.x = -Math.PI / 2;
+            labelMesh.layers.set(DISK_LAYER); 
+            disk.add(labelMesh);
+            return disk;
+        }
+
+        function handleInteraction() {
+            if (!totalMeshes) return;
+            if (launchIndex !== -1) return;
+            if (isHovered && interactiveIndex !== -1) {
+                if (isPlayingLockedIndex(interactiveIndex)) return;
+                const currentFocusIdx = Math.round(currentScroll / scrollSensitivity);
+                
+                if (interactiveIndex !== currentFocusIdx) {
+                    targetScroll = interactiveIndex * scrollSensitivity;
+                    pendingOpenIndex = interactiveIndex;
+                    openStates.fill(false);
+                } else {
+                    const targetState = !openStates[interactiveIndex];
+                    openStates.fill(false);
+                    openStates[interactiveIndex] = targetState;
+                    if (targetState) playWoosh();
+                }
+                
+                document.getElementById('audio-hint').style.display = 'none';
+            }
+        }
+
+        function startLaunchToPlayer(idx, url, selectedPayload = null) {
+            if (launchIndex !== -1) return;
+            bgBridge.active = false;
+            try { archiveDeck.pause(); } catch(_) {}
+            launchIndex = idx;
+            launchStartMs = performance.now();
+            launchTargetUrl = url;
+            launchSelectedPayload = selectedPayload;
+            launchNavigated = false;
+            pendingOpenIndex = -1;
+            openStates.fill(false);
+            openStates[idx] = true;
+            targetScroll = idx * scrollSensitivity;
+            currentScroll = targetScroll;
+            try {
+                localStorage.setItem(SCROLL_STATE_KEY, JSON.stringify({
+                    targetScroll,
+                    currentScroll,
+                    openIndex: idx
+                }));
+            } catch(_) {}
+            playBtn.classList.remove('visible');
+            playBtn.style.display = 'none';
+            playBtn.style.pointerEvents = 'none';
+            if (routeFade) {
+                routeFade.style.transition = 'opacity 420ms cubic-bezier(0.16, 1, 0.3, 1) 380ms';
+            }
+            routeFade?.classList.add('on');
+        }
+
+        function resetLaunchState() {
+            launchIndex = -1;
+            launchStartMs = 0;
+            launchTargetUrl = "";
+            launchSelectedPayload = null;
+            launchNavigated = false;
+            pendingOpenIndex = -1;
+            openStates.fill(false);
+            routeFade?.classList.remove('on');
+            if (routeFade) routeFade.style.transition = '';
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020202);
+            scene.fog = new THREE.FogExp2(0x020202, 0.025);
+
+            camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 8.8, 28);
+            camera.lookAt(0, 3, 0);
+            
+            camera.layers.enable(0);
+            camera.layers.enable(DISK_LAYER);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.1)); 
+            
+            const radialMain = new THREE.PointLight(0xffffff, 2.5, 35);
+            radialMain.position.set(-3, 10, 16);
+            radialMain.decay = 2.0;
+            scene.add(radialMain);
+
+            const radialSub = new THREE.PointLight(0xffffff, 0.6, 25);
+            radialSub.position.set(6, 3, 14);
+            radialSub.decay = 2.0;
+            radialSub.layers.set(DISK_LAYER);
+            scene.add(radialSub);
+
+            const reflectionLight = new THREE.PointLight(0xffffff, 0.25, 50);
+            reflectionLight.position.set(4.75, 8, 18); 
+            reflectionLight.layers.set(DISK_LAYER);
+            scene.add(reflectionLight);
+
+            const coverGeo = new THREE.BoxGeometry(6, 6, 0.12);
+            coverGeo.translate(0, 4, 0);
+            const sharedDiskNormalMap = generateVinylNormalMap(1024);
+
+            for (let i = 0; i < totalMeshes; i++) {
+                const group = new THREE.Group();
+                const item = collection[i];
+                const texture = generateCoverTexture(item, 1024);
+                
+                const material = new THREE.MeshStandardMaterial({ 
+                    map: texture, 
+                    roughness: 0.5, 
+                    metalness: 0.5,
+                    transparent: true 
+                });
+                const edgeMat = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color(item.color), 
+                    roughness: 0.5, 
+                    metalness: 0.5,
+                    transparent: true 
+                });
+                
+                const cover = new THREE.Mesh(coverGeo, [edgeMat, edgeMat, edgeMat, edgeMat, material, material]);
+                cover.name = "cover";
+                const disk = createVinylDisk(item, sharedDiskNormalMap);
+                disk.position.set(0, 4, -0.05);
+                
+                group.add(disk);
+                group.add(cover);
+                group.userData = { 
+                    index: i, 
+                    openProgress: 0, 
+                    openAmount: 0,   
+                    hoverVal: 0,
+                    tiltX: 0
+                };
+                scene.add(group);
+                groups.push(group);
+            }
+
+            // Desktop Mouse Events
+            window.addEventListener('wheel', (e) => {
+                if (launchIndex !== -1) return;
+                targetScroll -= e.deltaY; 
+                targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+                pendingOpenIndex = -1; 
+                if (Math.abs(e.deltaY) > 5) openStates.fill(false);
+            }, { passive: true });
+
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            });
+
+            window.addEventListener('mousedown', () => {
+               handleInteraction();
+            });
+
+            // Touch Events (Mobile/Tablet)
+            window.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+                isTouchMove = false;
+                mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+            }, { passive: false });
+
+            window.addEventListener('touchmove', (e) => {
+                if (launchIndex !== -1) return;
+                e.preventDefault(); // Sprečava nativno skrolanje
+                const touchY = e.touches[0].clientY;
+                const deltaY = touchY - touchStartY;
+                touchStartY = touchY;
+
+                // Tolerancija za tap vs scroll
+                if (Math.abs(deltaY) > 1.5) {
+                    isTouchMove = true;
+                    // Touch skrolanje treba biti osjetljivije
+                    targetScroll -= deltaY * 3.5; 
+                    targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+                    
+                    if (Math.abs(deltaY) > 2) openStates.fill(false);
+
+                    mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+                }
+            }, { passive: false });
+
+            window.addEventListener('touchend', (e) => {
+                if (!isTouchMove) {
+                    // Ignoriši ako je tapnuto play dugme (ono ima svoj handler)
+                    if (e.target.closest('#play-button')) return;
+                    
+                    // Forsiraj update raycastera za trenutni tap
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects(scene.children, true);
+                    let foundIdx = -1;
+                    if (intersects.length > 0) {
+                        for(let i = 0; i < intersects.length; i++) {
+                            let hitObj = intersects[i].object;
+                            while(hitObj.parent && !groups.includes(hitObj)) hitObj = hitObj.parent;
+                            if (hitObj.userData && typeof hitObj.userData.index !== 'undefined') {
+                                if (hitObj.visible && hitObj.position.z > -8) {
+                                    foundIdx = hitObj.userData.index;
+                                    break; 
+                                }
+                            }
+                        }
+                    }
+                    interactiveIndex = foundIdx;
+                    isHovered = foundIdx !== -1 && !isPlayingLockedIndex(foundIdx);
+                    
+                    handleInteraction();
+                }
+            });
+
+            playBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!totalMeshes) return;
+                const currentIdx = Math.round(currentScroll / scrollSensitivity);
+                playingIndex = currentIdx;
+                try { localStorage.setItem(PLAYING_INDEX_KEY, String(playingIndex)); } catch(_) {}
+                try { localStorage.setItem(RECORD_LOADED_KEY, "1"); } catch(_) {}
+                hasLoadedRecord = true;
+                const selected = collection[currentIdx];
+                if (!selected) return;
+                const selectedPayload = {
+                    ...selected,
+                    tracks: (selected.tracks || []).map((t) => `${selected.folder}/${t}`)
+                };
+                try {
+                    localStorage.setItem(SELECTED_ALBUM_KEY, JSON.stringify(selectedPayload));
+                } catch(_) {}
+                const q = new URLSearchParams({
+                    album: selected.name,
+                    name: selected.name,
+                    author: selected.author || "",
+                    color: selected.color || "",
+                    duration: selected.duration || ""
+                });
+                startLaunchToPlayer(currentIdx, `vinyl-player.html?${q.toString()}`, selectedPayload);
+            });
+            playerNavLink?.addEventListener('click', (e) => {
+                e.preventDefault();
+                if(EMBEDDED && window.parent){
+                    window.parent.postMessage({type:"archive-close"}, "*");
+                    return;
+                }
+                window.location.href = "vinyl-player.html";
+            });
+
+            animate();
+        }
+
+        function warmGlobalAssetsOnce() {
+            try {
+                localStorage.setItem(ARCHIVE_ALBUMS_KEY, JSON.stringify(collection.length ? collection : DEFAULT_COLLECTION));
+                if (localStorage.getItem(WARM_FLAG_KEY) === "1") return;
+                const warm = (url, mode = "same-origin") => {
+                    try { fetch(url, { cache: "force-cache", mode }).catch(()=>{}); } catch(_) {}
+                };
+                warm("archive.html");
+                warm("vinyl-player.html");
+                warm("sjaj-overlay.png");
+                warm("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "no-cors");
+                localStorage.setItem(WARM_FLAG_KEY, "1");
+            } catch(_) {}
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            let launchProgress = 0;
+            if (launchIndex !== -1) {
+                launchProgress = Math.min(1, (performance.now() - launchStartMs) / LAUNCH_MS);
+                if (launchProgress >= 1 && !launchNavigated) {
+                    launchNavigated = true;
+                    if(EMBEDDED && window.parent){
+                        window.parent.postMessage({type:"archive-select-album", album: launchSelectedPayload}, "*");
+                        resetLaunchState();
+                        return;
+                    }
+                    if(!launchTargetUrl) return;
+                    window.location.href = launchTargetUrl;
+                    return;
+                }
+            }
+            
+            currentScroll += (targetScroll - currentScroll) * 0.08; 
+            const scrollProgress = currentScroll / scrollSensitivity; 
+
+            if (pendingOpenIndex !== -1) {
+                const distToTarget = Math.abs(pendingOpenIndex - scrollProgress);
+                if (distToTarget < 0.25) { 
+                    openStates[pendingOpenIndex] = true;
+                    playWoosh();
+                    pendingOpenIndex = -1;
+                }
+            }
+
+            raycaster.layers.enable(0);
+            raycaster.layers.enable(DISK_LAYER);
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            let foundIdx = -1;
+            if (intersects.length > 0) {
+                for(let i = 0; i < intersects.length; i++) {
+                    let hitObj = intersects[i].object;
+                    while(hitObj.parent && !groups.includes(hitObj)) hitObj = hitObj.parent;
+                    if (hitObj.userData && typeof hitObj.userData.index !== 'undefined') {
+                        if (hitObj.visible && hitObj.position.z > -8) {
+                            foundIdx = hitObj.userData.index;
+                            break; 
+                        }
+                    }
+                }
+            }
+
+            interactiveIndex = foundIdx;
+            isHovered = foundIdx !== -1 && !isPlayingLockedIndex(foundIdx);
+            document.body.style.cursor = isHovered ? 'pointer' : 'default';
+
+            const displayIdx = totalMeshes ? Math.max(0, Math.min(totalMeshes - 1, Math.round(scrollProgress))) : 0;
+            if (displayIdx !== lastIndex) {
+                playTick();
+                lastIndex = displayIdx;
+            }
+            
+            document.getElementById('counter').innerText = `${totalMeshes} PLOCA`;
+
+            let playBtnUpdated = false;
+
+            groups.forEach((group, i) => {
+                let dist = i - scrollProgress;
+                const cover = group.children.find(c => c.name === "cover");
+                const disk = group.children.find(c => c.name === "disk");
+                
+                const isLaunching = i === launchIndex;
+                const targetOpen = isLaunching ? 1 : (openStates[i] ? 1 : 0);
+                group.userData.openProgress += (targetOpen - group.userData.openProgress) * 0.045;
+                group.userData.openAmount = easeInOutExpo(group.userData.openProgress);
+                if (isLaunching) {
+                    group.userData.openProgress = 1;
+                    group.userData.openAmount = 1;
+                }
+
+                group.userData.hoverVal += (((i === interactiveIndex) ? 1 : 0) - group.userData.hoverVal) * 0.1;
+
+                if (i === interactiveIndex) {
+                    group.userData.tiltX += (mouse.y * 0.15 - group.userData.tiltX) * 0.1;
+                } else {
+                    group.userData.tiltX *= 0.85;
+                }
+                
+                const baseRotX = -Math.PI * 0.04; 
+                let z = 8 - (dist >= 0 ? dist * 2.8 : 0);
+                let y = dist < 0 ? Math.abs(dist) * 0.15 : 0;
+                let rotX = baseRotX + (dist < 0 ? Math.abs(dist) * 2.8 : 0);
+
+                group.position.set(0, y, z);
+                group.rotation.x = rotX + group.userData.tiltX;
+
+                const s = 1 + (group.userData.hoverVal * 0.03);
+                group.scale.set(s, s, s);
+                
+                const openVal = group.userData.openAmount;
+                cover.position.x = openVal * -1.2; 
+                const launchEase = isLaunching ? easeInCubic(launchProgress) : 0;
+                if (isLaunching) {
+                    group.userData.tiltX = 0;
+                    cover.position.x = -1.2;
+                    disk.position.x = 1.8 + launchEase * 28;
+                    disk.rotation.y = -2.2;
+                    disk.rotation.z = 0;
+                    disk.rotation.x = Math.PI / 2;
+                } else {
+                    disk.position.x = openVal * 1.8;
+                    disk.rotation.y = openVal * -2.2;
+                    disk.rotation.z = 0;
+                    disk.rotation.x = (Math.PI / 2) + group.userData.tiltX * 0.5;
+                }
+
+                disk.visible = isLaunching || openVal > 0.005;
+                if (!isLaunching && openStates[i]) disk.rotation.y -= 0.008;
+
+                // Ažuriranje pozicije PLAY dugmeta
+                if (openVal > 0.1 && i === displayIdx && !isPlayingLockedIndex(i)) {
+                    const vector = new THREE.Vector3();
+                    disk.getWorldPosition(vector);
+                    vector.project(camera);
+
+                    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                    const yPos = (vector.y * -0.5 + 0.5) * window.innerHeight;
+
+                    playBtn.style.left = `${x}px`;
+                    playBtn.style.top = `${yPos}px`;
+                    playBtn.classList.add('visible');
+                    playBtn.style.display = 'flex';
+                    playBtnUpdated = true;
+                }
+
+                const fadeStartThreshold = Math.PI / 4; 
+                let opacity = 1;
+                if (rotX > fadeStartThreshold) {
+                    opacity = Math.max(0, 1 - (rotX - fadeStartThreshold) * 3.5);
+                    if (!isLaunching && openStates[i] && opacity < 0.2) {
+                        openStates[i] = false;
+                    }
+                }
+
+                group.traverse(child => { 
+                    if(child.material) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        mats.forEach(m => {
+                            m.opacity = opacity;
+                            m.transparent = true;
+                            m.depthWrite = opacity > 0.9;
+                        });
+                    } 
+                });
+                group.visible = opacity > 0.001;
+            });
+
+            if (!playBtnUpdated) {
+                playBtn.classList.remove('visible');
+                setTimeout(() => { if(!playBtn.classList.contains('visible')) playBtn.style.display = 'none'; }, 400);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // Stable boot: use local collection immediately and initialize once.
+            applyCollectionData(DEFAULT_COLLECTION);
+            refreshRecordLoadedState();
+            try {
+                const saved = Number(localStorage.getItem(PLAYING_INDEX_KEY));
+                if (Number.isFinite(saved) && saved >= 0 && saved < totalMeshes) playingIndex = saved;
+            } catch(_) {}
+            if (!hasLoadedRecord) {
+                playingIndex = -1;
+            }
+            try {
+                const raw = localStorage.getItem(SCROLL_STATE_KEY);
+                if (raw) {
+                    const state = JSON.parse(raw);
+                    const sTarget = Number(state?.targetScroll);
+                    const sCurrent = Number(state?.currentScroll);
+                    const sOpen = Number(state?.openIndex);
+                    if (Number.isFinite(sTarget)) targetScroll = Math.max(0, Math.min(maxScroll, sTarget));
+                    if (Number.isFinite(sCurrent)) currentScroll = Math.max(0, Math.min(maxScroll, sCurrent));
+                    if (Number.isFinite(sOpen) && sOpen >= 0 && sOpen < totalMeshes) {
+                        openStates.fill(false);
+                        openStates[sOpen] = true;
+                    }
+                }
+            } catch(_) {}
+            warmGlobalAssetsOnce();
+            init();
+        });
+        startArchiveBridgeFromState();
+        window.addEventListener("pageshow", () => {
+            refreshRecordLoadedState();
+            startArchiveBridgeFromState();
+        });
+        ["pointerdown","mousedown","touchstart","wheel","keydown"].forEach((evt)=>{
+            window.addEventListener(evt, ensureArchiveBridgePlayback, {passive:true});
+        });
+        document.addEventListener("visibilitychange", () => {
+            if(!document.hidden) ensureArchiveBridgePlayback();
+        });
+        archiveDeck.addEventListener("ended", () => {
+            if(!bgBridge.active) return;
+            const range = sideRangeForBridge(bgBridge.currentSide);
+            if(bgBridge.currentTrackIndex < range.end){
+                bgBridge.currentTrackIndex += 1;
+                setBridgeSourceByIndex(bgBridge.currentTrackIndex);
+                archiveDeck.currentTime = 0;
+                archiveDeck.play().catch(()=>{});
+                saveBridgePlaybackState(true);
+                return;
+            }
+            bgBridge.active = false;
+            saveBridgePlaybackState(false);
+        });
+        window.addEventListener("pagehide", () => {
+            try {
+                let openIndex = -1;
+                for (let i = 0; i < openStates.length; i++) {
+                    if (openStates[i]) { openIndex = i; break; }
+                }
+                localStorage.setItem(SCROLL_STATE_KEY, JSON.stringify({
+                    targetScroll,
+                    currentScroll,
+                    openIndex
+                }));
+            } catch(_) {}
+            if(bgBridge.active){
+                saveBridgePlaybackState(!archiveDeck.paused);
+            }
+        });
+    </script>
+</body>
+</html>
