@@ -108,10 +108,10 @@
       --lons:0 0 18px rgba(255,0,0,0.65),0 0 9px rgba(255,0,0,0.35),inset 0 -1px 2px rgba(255,255,255,0.12);
       --tshadow:drop-shadow(18px 10px 14px rgba(0,0,0,0.85));
       --tbase:radial-gradient(circle at 30% 30%,#222,#000);--tbase-b:1px solid #000;
-      --tpiv:radial-gradient(circle,#3a3a3a,#1a1a1a);--tpiv-b:1px solid #111;--piv-rim:conic-gradient(from -45deg,rgba(255,255,255,0.55),rgba(255,255,255,0) 38%,rgba(0,0,0,0.55) 72%,rgba(255,255,255,0.32));
-      --head:linear-gradient(145deg,#555,#333);--head-b:1px solid #111;
+      --tpiv:radial-gradient(circle,#2b2b2b,#101010);--tpiv-b:1px solid #0a0a0a;--piv-rim:conic-gradient(from -45deg,rgba(255,255,255,0.45),rgba(255,255,255,0) 38%,rgba(0,0,0,0.62) 72%,rgba(255,255,255,0.24));
+      --head:linear-gradient(145deg,#444,#252525);--head-b:1px solid #0e0e0e;
       --needle:#111;--lift:#222;
-      --rodA:#2f2f2f;--rodB:#7a7a7a;--rodC:#3b3b3b;--rodD:#686868;--rodE:#262626;--rodStroke:rgba(0,0,0,0.78);--rodSh:drop-shadow(18px 10px 14px rgba(0,0,0,0.92));
+      --rodA:#262626;--rodB:#5f5f5f;--rodC:#303030;--rodD:#545454;--rodE:#1e1e1e;--rodStroke:rgba(0,0,0,0.82);--rodSh:drop-shadow(18px 10px 14px rgba(0,0,0,0.92));
       --noise:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
       --nav-bg: rgba(0, 0, 0, 0.2);
       --nav-text: #fff;
@@ -437,14 +437,15 @@
     .label-hole-clear{position:absolute;left:50%;top:50%;width:14%;height:14%;transform:translate(-50%,-50%);border-radius:50%;background:transparent;box-shadow:0 0 0 .75px #181818 inset}
     .spindle{width:11px;height:11px;background:var(--spin);border-radius:50%;z-index:40;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:var(--spin-s);transition:opacity 320ms cubic-bezier(0.22, 1, 0.36, 1)}
 
-    .tonearm-assembly{position:absolute;right:calc(var(--stack) + var(--rp) + 12px - 16px - 12px - 4px - 2px - 6px + 2px + 8px);top:calc(24% - 46px);width:80px;height:240px;z-index:95;pointer-events:none;display:flex;flex-direction:column;align-items:center}
-    .tonearm-base{width:46px;height:46px;border-radius:50%;position:relative;box-shadow:2px 4px 12px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;border:var(--tbase-b);background:var(--tbase);z-index:10}
+    .tonearm-assembly{position:absolute;right:calc(var(--stack) + var(--rp) + 12px - 16px - 12px - 4px - 2px - 6px + 2px + 8px);top:calc(24% - 66px);width:80px;height:240px;z-index:95;pointer-events:none;display:flex;flex-direction:column;align-items:center;overflow:visible}
+    .tonearm-base{width:46px;height:46px;margin-top:50px;border-radius:50%;position:relative;box-shadow:2px 4px 12px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;border:var(--tbase-b);background:var(--tbase);z-index:10}
     .tonearm-pivot{width:19px;height:19px;background:var(--tpiv);border-radius:50%;border:var(--tpiv-b);box-shadow:inset 0 2px 4px rgba(255,255,255,.2);z-index:20;position:relative;overflow:hidden}
     .tonearm-pivot:before{content:"";position:absolute;inset:-2px;background:var(--piv-rim);-webkit-mask:radial-gradient(circle,transparent 55%,#000 60%);mask:radial-gradient(circle,transparent 55%,#000 60%);opacity:.55;pointer-events:none}
-    .tonearm-rod-svg{position:absolute;top:23px;width:80px;height:344px;transform-origin:40px 0;transform:rotate(0deg);transition:transform 520ms cubic-bezier(0.22,1,0.36,1);z-index:15;filter:var(--tshadow)}
+    .tonearm-pivot:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:7px;height:11px;border-radius:3.5px;background:linear-gradient(90deg,#6e6e6e 0%,#f2f2f2 45%,#767676 100%);border:1px solid rgba(0,0,0,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+    .tonearm-rod-svg{position:absolute;top:43px;width:80px;height:344px;transform-origin:40px 30px;transform:rotate(0deg);transition:transform 1100ms cubic-bezier(0.22,1,0.36,1);z-index:15;filter:var(--tshadow);overflow:visible}
     .headshell-wrap{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:52px;height:56px;pointer-events:none;overflow:visible}
-    .headshell-joint{position:absolute;left:calc(50% - 6px);top:-2px;transform:translateX(-50%);width:8px;height:7px;border-radius:2px;background:var(--head);border:var(--head-b);box-shadow:inset 0 1px 1px rgba(255,255,255,.12)}
-    .headshell-pro{position:absolute;bottom:20px;left:calc(50% - 7px);transform:translateX(-50%) rotate(30deg);transform-origin:50% 3px;width:16px;height:32px;background:var(--head);border-radius:0;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 1px rgba(255,255,255,.12);border:var(--head-b);opacity:1 !important;pointer-events:auto;cursor:grab}
+    .headshell-joint{position:absolute;left:calc(50% - 11px);bottom:52px;width:10px;height:8px;border-radius:2px;background:var(--head);border:var(--head-b);box-shadow:inset 0 1px 1px rgba(255,255,255,.12);transform:rotate(15deg);transform-origin:center}
+    .headshell-pro{position:absolute;bottom:20px;left:calc(50% - 7px);transform:translateX(-50%) rotate(25deg);transform-origin:50% 3px;width:17.6px;height:35.2px;background:var(--head);border-radius:2px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 1px rgba(255,255,255,.12);border:var(--head-b);opacity:1 !important;pointer-events:auto;cursor:grab}
     .headshell-pro:active{cursor:grabbing}
     .needle-point{width:2px;height:6px;background:var(--needle);position:absolute;bottom:-2px;border-radius:1px}
     .finger-lift{position:absolute;right:-8px;top:10px;width:10px;height:2px;background:var(--lift);border-radius:0 2px 2px 0;box-shadow:1px 1px 2px rgba(0,0,0,.2)}
@@ -459,9 +460,9 @@
     .elegant-slider-well{width:10px;height:100%;background:var(--sw);border-radius:5px;box-shadow:inset 2px 2px 5px rgba(0,0,0,.25),inset -1px -1px 2px rgba(255,255,255,.06);border:var(--well-b);position:relative;display:flex;justify-content:center}
     body[data-theme="light"] .elegant-slider-well{box-shadow:var(--well-s);background:var(--well)}
     .elegant-slider-track{position:absolute;width:1.5px;height:80%;background:var(--track);top:10%}
-    .rpm-markers{position:absolute;left:-14px;top:0;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:10% 0;pointer-events:none}
-    .marker-tick{width:6px;height:1px;background:var(--mk);position:relative}
-    .marker-tick:after{content:attr(data-val);position:absolute;right:10px;top:-4px;font-size:6px;color:var(--mkl);font-weight:bold}
+    .rpm-markers{position:absolute;left:-14px;top:0;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:9px 0;pointer-events:none}
+    .marker-tick{width:6px;height:1px;background:var(--stag);position:relative}
+    .marker-tick:after{content:attr(data-val);position:absolute;right:10px;top:-4px;font-size:6px;color:var(--stag);font-weight:bold}
     .elegant-slider-handle{position:absolute;width:18px;height:9px;background:var(--hbg);border-radius:2px;left:50%;box-shadow:var(--hs);cursor:pointer;z-index:5;top:50%;transform:translate(-50%,-50%);border:none}
     .slider-tag{position:absolute;bottom:-14px;font-size:6px;font-weight:bold;color:var(--stag);text-transform:uppercase;white-space:nowrap}
 
@@ -623,19 +624,46 @@
                 <stop offset="55%" style="stop-color:rgba(0,0,0,.10)"/>
                 <stop offset="100%" style="stop-color:rgba(255,255,255,.28)"/>
               </linearGradient>
+              <linearGradient id="topCapGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:color-mix(in srgb,var(--rodE),#fff 10%)"/>
+                <stop offset="18%" style="stop-color:color-mix(in srgb,var(--rodA),var(--rodC) 20%)"/>
+                <stop offset="38%" style="stop-color:color-mix(in srgb,var(--rodB),var(--rodC) 40%)"/>
+                <stop offset="62%" style="stop-color:color-mix(in srgb,var(--rodB),var(--rodC) 40%)"/>
+                <stop offset="82%" style="stop-color:color-mix(in srgb,var(--rodC),var(--rodD) 20%)"/>
+                <stop offset="100%" style="stop-color:color-mix(in srgb,var(--rodD),#fff 6%)"/>
+              </linearGradient>
+              <linearGradient id="pivotMetalGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:color-mix(in srgb,var(--rodB),#fff 16%)"/>
+                <stop offset="30%" style="stop-color:color-mix(in srgb,var(--rodA),var(--rodB) 35%)"/>
+                <stop offset="66%" style="stop-color:color-mix(in srgb,var(--rodC),var(--rodE) 22%)"/>
+                <stop offset="100%" style="stop-color:var(--rodE)"/>
+              </linearGradient>
+              <linearGradient id="pivotAnisoSheen" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:rgba(255,255,255,.00)"/>
+                <stop offset="28%" style="stop-color:rgba(255,255,255,.08)"/>
+                <stop offset="42%" style="stop-color:rgba(255,255,255,.24)"/>
+                <stop offset="54%" style="stop-color:rgba(255,255,255,.32)"/>
+                <stop offset="68%" style="stop-color:rgba(255,255,255,.10)"/>
+                <stop offset="100%" style="stop-color:rgba(255,255,255,.00)"/>
+              </linearGradient>
+              <linearGradient id="pivotBrushLines" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:rgba(255,255,255,.00)"/>
+                <stop offset="50%" style="stop-color:rgba(255,255,255,.07)"/>
+                <stop offset="100%" style="stop-color:rgba(255,255,255,.00)"/>
+              </linearGradient>
             </defs>
-            <rect x="37" y="-56" width="5" height="56" rx="2.5" fill="url(#rodGrad)" stroke="var(--rodStroke)" stroke-width=".5"/>
-            <g transform="translate(24, -52)">
-              <rect width="32" height="28" rx="2.5" fill="url(#rodGrad)" stroke="var(--rodStroke)" stroke-width=".6"/>
-              <rect x="0.8" y="0.8" width="30.4" height="26.4" rx="2.1" fill="url(#cwGrad)" opacity=".55"/>
-            </g>
-            <rect x="36.8" y="0" width="6.4" height="187.2" rx="3.2" fill="url(#rodGrad)" stroke="var(--rodStroke)" stroke-width=".5"/>
+            <rect x="36.8" y="-26" width="6.4" height="213.2" rx="3.2" fill="url(#rodGrad)" stroke="var(--rodStroke)" stroke-width=".5"/>
+            <circle cx="40" cy="18" r="7.8" fill="url(#pivotMetalGrad)" stroke="var(--rodStroke)" stroke-width=".7"/>
+            <circle cx="40" cy="18" r="7.8" fill="url(#pivotAnisoSheen)" opacity=".58"/>
+            <circle cx="40" cy="18" r="7.8" fill="url(#pivotBrushLines)" opacity=".38"/>
             <foreignObject x="16" y="172" width="60" height="64">
               <div xmlns="http://www.w3.org/1999/xhtml" class="headshell-wrap">
                 <div class="headshell-joint"></div>
                 <div class="headshell-pro"><div class="finger-lift"></div><div class="needle-point"></div></div>
               </div>
             </foreignObject>
+            <rect x="30.5" y="-11" width="19" height="10" rx="1" fill="url(#topCapGrad)" stroke="var(--rodStroke)" stroke-width=".45" stroke-opacity=".65"/>
+            <rect x="23" y="-27" width="33" height="18" rx="1" fill="url(#topCapGrad)" stroke="var(--rodStroke)" stroke-width=".45" stroke-opacity=".65"/>
           </svg>
         </div>
 
@@ -644,14 +672,14 @@
             <div class="elegant-slider-well" id="speedWell">
               <div class="elegant-slider-track"></div>
               <div class="rpm-markers">
-                <div class="marker-tick" data-val="45"></div><div class="marker-tick" data-val="33"></div><div class="marker-tick" data-val="25"></div>
+                <div class="marker-tick" data-val="40"></div><div class="marker-tick" data-val="33"></div><div class="marker-tick" data-val="30"></div>
               </div>
               <div class="elegant-slider-handle" id="speedHandle" style="top:50%"></div>
               <span class="slider-tag">RPM</span>
             </div>
             <div class="elegant-slider-well" id="volWell">
               <div class="elegant-slider-track"></div>
-              <div class="elegant-slider-handle" id="volHandle" style="top:20%"></div>
+              <div class="elegant-slider-handle" id="volHandle" style="top:66%"></div>
               <span class="slider-tag">Vol</span>
             </div>
           </div>
@@ -830,6 +858,7 @@
     let currentSide="A";
     let currentAlbumName="";
     let playT=null;
+    let leadInNoiseActive = false;
     let sideDurations={A:1175,B:1410}; // fallback dok ne procitamo trajanja fajlova
     let playStartMs=null,elapsedMs=0;
     let albumTracks=[];
@@ -864,14 +893,15 @@
     const ARM_TRACK_OFFSET_DEG = 2.8;
     const ARM_EDGE_ANGLE = 18.6 + ARM_TRACK_OFFSET_DEG;
     const ARM_END_ANGLE = ARM_EDGE_ANGLE + 20;
+    const ARM_TRANSITION_MS = 1100;
 
     function setRecordRotation(deg){
       if(record) record.style.transform = `rotate(${deg}deg)`;
     }
-    function setTonearmAngle(deg, animated=true){
+    function setTonearmAngle(deg, animated=true, durationMs=ARM_TRANSITION_MS){
       if(!tonearmRod) return;
       tonearmRod.style.transition = animated
-        ? "transform 520ms cubic-bezier(0.22,1,0.36,1)"
+        ? `transform ${durationMs}ms cubic-bezier(0.22,1,0.36,1)`
         : "none";
       tonearmRod.style.transform = `rotate(${deg}deg)`;
     }
@@ -960,7 +990,7 @@
       vinylNoiseAudio.volume = Math.max(0, Math.min(1, v * 0.7));
     };
     const syncVinylNoise=()=>{
-      const shouldPlay = powered && playing && hasLoadedVinyl();
+      const shouldPlay = powered && hasLoadedVinyl() && (playing || leadInNoiseActive);
       if(shouldPlay){
         if(vinylNoiseAudio.paused){
           vinylNoiseAudio.play().catch(()=>{});
@@ -972,7 +1002,7 @@
 
     setupSlider("speedHandle","speedWell",true,(p,isFinal)=>{
       if(!isFinal) return;
-      base=p===10?1.36:p===50?1:p===90?0.758:1;
+      base=p===10?1.212:p===50?1:p===90?0.909:1;
       if(playing&&playStartMs!=null) target=base;
       if(!deckAudio.paused){
         deckAudio.playbackRate = Math.max(0.03, Math.min(3, base));
@@ -994,7 +1024,7 @@
       applyDeckVolume(volumeFromHandlePercent(p));
       showVolumeOnDisplay(volumeFromHandlePercent(p));
     });
-    applyDeckVolume(volumeFromHandlePercent(20));
+    applyDeckVolume(volumeFromHandlePercent(66));
 
     const fmtTime=(sec)=>{
       sec=Math.max(0, Math.floor(sec));
@@ -1173,7 +1203,7 @@
       currentSide = "A";
       rot = 0;
       setRecordRotation(0);
-      if(nowPlayingLabel) nowPlayingLabel.textContent = "";
+      if(nowPlayingLabel) nowPlayingLabel.textContent = "Playing";
       if(sideDisplay) sideDisplay.textContent = "No vinyl";
       if(sideStamp) sideStamp.textContent = "";
       if(labelSideText) labelSideText.textContent = "SIDE A";
@@ -1188,7 +1218,7 @@
 
     const syncDisplay=()=>{
       if(!hasLoadedVinyl()){
-        if(nowPlayingLabel) nowPlayingLabel.textContent = "";
+        if(nowPlayingLabel) nowPlayingLabel.textContent = "Playing";
         if(sideDisplay) sideDisplay.textContent = "No vinyl";
         if(sideStamp) sideStamp.textContent = "";
         if(labelSideText) labelSideText.textContent = "SIDE A";
@@ -1237,7 +1267,7 @@
     function updateSpeedHandleFromBase(){
       const h = $("speedHandle");
       if(!h) return;
-      const top = Math.abs(base - 1.36) < 0.02 ? 10 : Math.abs(base - 1) < 0.02 ? 50 : 90;
+      const top = Math.abs(base - 1.212) < 0.02 ? 10 : Math.abs(base - 1) < 0.02 ? 50 : 90;
       h.style.top = `${top}%`;
     }
 
@@ -1370,12 +1400,21 @@
 
     async function applySelectedAlbumAndStart(selected){
       if(!selected || !selected.name) return;
+      const shouldAutoResume = powered && (playing || leadInNoiseActive || !deckAudio.paused || !!playT);
       try { localStorage.setItem(SELECTED_ALBUM_KEY, JSON.stringify(selected)); } catch(_) {}
+      // Reset transport button visual state when switching albums.
+      document.querySelectorAll(".skeuo-btn").forEach((b)=>b.classList.remove("active"));
+      playStartToken += 1;
+      if(playT){clearTimeout(playT);playT=null;}
+      leadInNoiseActive = false;
       stopDeckTrack();
       playing = false;
       target = 0;
       speed = 0;
       playStartMs = null;
+      try { vinylNoiseAudio.pause(); vinylNoiseAudio.currentTime = 0; } catch(_) {}
+      syncVinylNoise();
+      savePlaybackState();
       currentSide = "A";
       currentTrackIndex = 0;
       elapsedMs = 0;
@@ -1389,6 +1428,11 @@
       updatePowerUi();
       document.body.classList.remove("no-record");
       await runDropInAnimation();
+      if(shouldAutoResume){
+        handlePress(null, "play");
+      } else {
+        syncVinylNoise();
+      }
     }
 
     function handleArchiveMessage(event){
@@ -1465,7 +1509,7 @@
       syncVinylNoise();
     }
 
-    function handlePress(btn,type){
+    function handlePress(btn,type,opts={}){
       if(!hasLoadedVinyl()) return;
       if(!powered && type!=="stop"){
         if(btn){btn.classList.add("active");setTimeout(()=>btn.classList.remove("active"),150)}
@@ -1478,12 +1522,15 @@
         playStartToken += 1;
         stopStartCue();
         if(playT){clearTimeout(playT);playT=null;}
+        leadInNoiseActive = false;
         target=0;
         playing=false;
         playStartMs=null;
         stopDeckTrack();
         syncVinylNoise();
-        try { endSound.currentTime = 0; endSound.play().catch(()=>{}); } catch(_) {}
+        if(!opts.silent){
+          try { endSound.currentTime = 0; endSound.play().catch(()=>{}); } catch(_) {}
+        }
         elapsedMs=0;
         setTimer(getSideDuration());
         setTonearmAngle(ARM_REST_ANGLE, true);
@@ -1503,9 +1550,40 @@
         target=0;
         speed=0;
         playStartMs=null;
+        try { endSound.currentTime = 0; endSound.play().catch(()=>{}); } catch(_) {}
+        const fromRestStart = elapsedMs <= 120 && Math.abs(getCurrentTonearmAngle() - ARM_REST_ANGLE) <= 0.8;
+        if(fromRestStart){
+          // 1) Needle drops to record edge
+          // 2) Noise starts only after needle lands
+          // 3) First track starts 2s later
+          const cueDropMs = 1200;
+          setTonearmAngle(ARM_EDGE_ANGLE, true, cueDropMs);
+          target=0;
+          speed=0;
+          playT=setTimeout(()=>{
+            if(!powered) return;
+            target=base;
+            speed=Math.max(speed, base * 0.45);
+            leadInNoiseActive = true;
+            syncVinylNoise();
+            playT=setTimeout(()=>{
+              playT=null;
+              if(!powered) return;
+              leadInNoiseActive = false;
+              playing=true;
+              target=base;
+              speed=base;
+              playStartMs=performance.now();
+              playDeckTrack().catch(()=>{});
+              syncVinylNoise();
+            },2000);
+          },cueDropMs);
+          return;
+        }
         setTonearmFromElapsed(true);
         playT=setTimeout(()=>{
           playT=null;
+          if(!powered) return;
           playing=true;
           target=base;
           speed=base;
@@ -1519,6 +1597,7 @@
         playStartToken += 1;
         stopStartCue();
         if(playT){clearTimeout(playT);playT=null;}
+        leadInNoiseActive = false;
         pauseDeckTrack();
         playStartMs=null;
         target=0;
@@ -1543,8 +1622,8 @@
       flipBtn?.setAttribute('disabled','true');
 
       try {
-        const wasPlaying = playing || (playStartMs != null);
-        handlePress(null,'stop');
+        const wasPlaying = playing || leadInNoiseActive || (playStartMs != null);
+        handlePress(null,'stop',{silent:!wasPlaying});
         if(wasPlaying) await sleep(1250);
 
         document.body.classList.add('is-flipping');
@@ -1653,6 +1732,8 @@
     window.addEventListener("touchmove",onMove,{passive:false});
     const startArmDrag=(e)=>{
       if(!hasLoadedVinyl()) return;
+      const canDragWhilePaused = !playing && elapsedMs > 0;
+      if(!playing && !canDragWhilePaused) return;
       if(e?.cancelable) e.preventDefault();
       e.stopPropagation();
       dragArm = true;
@@ -1713,7 +1794,8 @@
 
     function loop(){
       if(playStartMs!=null) target = base;
-      if(!playing) target = 0;
+      if(leadInNoiseActive) target = base;
+      if(!playing && !leadInNoiseActive) target = 0;
       if(!dragRec){
         const accel = 0.035;
         speed += (target - speed) * accel;

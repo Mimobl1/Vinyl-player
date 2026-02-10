@@ -99,6 +99,25 @@
             transform: translate(-50%, -50%) scale(1.1);
             background: #f0f0f0;
         }
+        #now-playing-badge {
+            position: fixed;
+            pointer-events: none;
+            z-index: 96;
+            display: none;
+            transform: translate(-50%, -50%);
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.24);
+            background: rgba(0,0,0,0.40);
+            color: rgba(255,255,255,0.95);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.3px;
+            text-transform: uppercase;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            white-space: nowrap;
+        }
         .top-nav-btn {
             pointer-events: auto;
             background: rgba(255,255,255,0.08);
@@ -147,6 +166,7 @@
     <div id="route-fade" aria-hidden="true"></div>
     <div id="audio-hint">Zvuk aktivan nakon interakcije</div>
     <button id="play-button">PLAY</button>
+    <div id="now-playing-badge">Now Playing</div>
 
     <div class="ui-overlay">
         <div class="top-bar">
@@ -261,6 +281,7 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         const playBtn = document.getElementById('play-button');
+        const nowPlayingBadge = document.getElementById('now-playing-badge');
         const playerNavLink = document.getElementById('playerNavLink');
 
         function normalizeCollectionItem(item) {
@@ -639,7 +660,10 @@
             if (!totalMeshes) return;
             if (launchIndex !== -1) return;
             if (isHovered && interactiveIndex !== -1) {
-                if (isPlayingLockedIndex(interactiveIndex)) return;
+                if (isPlayingLockedIndex(interactiveIndex)) {
+                    openStates[interactiveIndex] = false;
+                    return;
+                }
                 const currentFocusIdx = Math.round(currentScroll / scrollSensitivity);
                 
                 if (interactiveIndex !== currentFocusIdx) {
@@ -688,6 +712,14 @@
         }
 
         function resetLaunchState() {
+            if (launchSelectedPayload?.name) {
+                const name = String(launchSelectedPayload.name).toUpperCase();
+                const idx = collection.findIndex((a) => String(a?.name || "").toUpperCase() === name);
+                if (idx >= 0) {
+                    playingIndex = idx;
+                    try { localStorage.setItem(PLAYING_INDEX_KEY, String(idx)); } catch(_) {}
+                }
+            }
             launchIndex = -1;
             launchStartMs = 0;
             launchTargetUrl = "";
@@ -697,6 +729,7 @@
             openStates.fill(false);
             routeFade?.classList.remove('on');
             if (routeFade) routeFade.style.transition = '';
+            playBtn.style.pointerEvents = 'auto';
         }
 
         function init() {
@@ -854,8 +887,6 @@
                 e.stopPropagation();
                 if (!totalMeshes) return;
                 const currentIdx = Math.round(currentScroll / scrollSensitivity);
-                playingIndex = currentIdx;
-                try { localStorage.setItem(PLAYING_INDEX_KEY, String(playingIndex)); } catch(_) {}
                 try { localStorage.setItem(RECORD_LOADED_KEY, "1"); } catch(_) {}
                 hasLoadedRecord = true;
                 const selected = collection[currentIdx];
@@ -966,6 +997,7 @@
             document.getElementById('counter').innerText = `${totalMeshes} PLOCA`;
 
             let playBtnUpdated = false;
+            let nowPlayingUpdated = false;
 
             groups.forEach((group, i) => {
                 let dist = i - scrollProgress;
@@ -1007,7 +1039,7 @@
                     group.userData.tiltX = 0;
                     cover.position.x = -1.2;
                     disk.position.x = 1.8 + launchEase * 28;
-                    disk.rotation.y = -2.2;
+                    disk.rotation.y = -2.2 - (launchProgress * Math.PI * 1.15);
                     disk.rotation.z = 0;
                     disk.rotation.x = Math.PI / 2;
                 } else {
@@ -1019,6 +1051,15 @@
 
                 disk.visible = isLaunching || openVal > 0.005;
                 if (!isLaunching && openStates[i]) disk.rotation.y -= 0.008;
+
+                const fadeStartThreshold = Math.PI / 4; 
+                let opacity = 1;
+                if (rotX > fadeStartThreshold) {
+                    opacity = Math.max(0, 1 - (rotX - fadeStartThreshold) * 3.5);
+                    if (!isLaunching && openStates[i] && opacity < 0.2) {
+                        openStates[i] = false;
+                    }
+                }
 
                 // Ažuriranje pozicije PLAY dugmeta
                 if (openVal > 0.1 && i === displayIdx && !isPlayingLockedIndex(i)) {
@@ -1036,13 +1077,17 @@
                     playBtnUpdated = true;
                 }
 
-                const fadeStartThreshold = Math.PI / 4; 
-                let opacity = 1;
-                if (rotX > fadeStartThreshold) {
-                    opacity = Math.max(0, 1 - (rotX - fadeStartThreshold) * 3.5);
-                    if (!isLaunching && openStates[i] && opacity < 0.2) {
-                        openStates[i] = false;
-                    }
+                if (playingIndex === i && i === interactiveIndex && opacity > 0.05) {
+                    const v = new THREE.Vector3();
+                    cover.getWorldPosition(v);
+                    v.y += 2.35;
+                    v.project(camera);
+                    const bx = (v.x * 0.5 + 0.5) * window.innerWidth;
+                    const by = (v.y * -0.5 + 0.5) * window.innerHeight;
+                    nowPlayingBadge.style.left = `${bx}px`;
+                    nowPlayingBadge.style.top = `${by}px`;
+                    nowPlayingBadge.style.display = 'block';
+                    nowPlayingUpdated = true;
                 }
 
                 group.traverse(child => { 
@@ -1061,6 +1106,9 @@
             if (!playBtnUpdated) {
                 playBtn.classList.remove('visible');
                 setTimeout(() => { if(!playBtn.classList.contains('visible')) playBtn.style.display = 'none'; }, 400);
+            }
+            if (!nowPlayingUpdated) {
+                nowPlayingBadge.style.display = 'none';
             }
 
             renderer.render(scene, camera);
