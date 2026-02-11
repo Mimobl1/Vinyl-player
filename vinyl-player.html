@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nosac</title>
-  <link rel="prefetch" href="/archive" />
+  <link rel="prefetch" href="archive.html" />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
   <link rel="dns-prefetch" href="//cdnjs.cloudflare.com" />
   <link rel="prefetch" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script" crossorigin />
@@ -558,7 +558,7 @@
   <div class="flip-overlay" id="flipOverlay" aria-hidden="true"></div>
 
   <nav class="top-nav" id="topNav">
-    <a class="nav-btn" href="/archive" aria-label="Open Archive" onclick="openArchive(event)">
+    <a class="nav-btn" href="archive.html" aria-label="Open Archive" onclick="openArchive(event)">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       Archive
     </a>
@@ -830,7 +830,7 @@
       archiveTransitioning = true;
       savePlaybackState();
       if(archiveFrame && archiveFrame.src === "about:blank"){
-        archiveFrame.src = "/archive?embedded=1";
+        archiveFrame.src = "archive.html?embedded=1";
       }
       const overlay = $("flipOverlay");
       if(overlay){
@@ -1886,7 +1886,7 @@
       idle(() => warmArchiveResourcesOnce());
       idle(() => {
         if(archiveFrame && archiveFrame.src === "about:blank"){
-          archiveFrame.src = "/archive?embedded=1";
+          archiveFrame.src = "archive.html?embedded=1";
         }
       });
       restoreSidebarState();
