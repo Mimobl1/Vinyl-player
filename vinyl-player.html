@@ -454,7 +454,7 @@
     .tonearm-pivot{width:19px;height:19px;background:var(--tpiv);border-radius:50%;border:var(--tpiv-b);box-shadow:inset 0 2px 4px rgba(255,255,255,.2);z-index:20;position:relative;overflow:hidden}
     .tonearm-pivot:before{content:"";position:absolute;inset:-2px;background:var(--piv-rim);-webkit-mask:radial-gradient(circle,transparent 55%,#000 60%);mask:radial-gradient(circle,transparent 55%,#000 60%);opacity:.55;pointer-events:none}
     .tonearm-pivot:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:7px;height:11px;border-radius:3.5px;background:linear-gradient(90deg,#6e6e6e 0%,#f2f2f2 45%,#767676 100%);border:1px solid rgba(0,0,0,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
-    .tonearm-rod-svg{position:absolute;top:43px;width:80px;height:344px;transform-origin:40px 30px;transform:rotate(0deg);transition:transform 1400ms cubic-bezier(0.22,1,0.36,1);z-index:15;filter:var(--tshadow);overflow:visible}
+    .tonearm-rod-svg{position:absolute;top:43px;width:80px;height:344px;transform-origin:40px 30px;transform:rotate(0deg);transition:transform 2200ms cubic-bezier(0.22,1,0.36,1);z-index:15;filter:var(--tshadow);overflow:visible}
     .headshell-wrap{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:52px;height:56px;pointer-events:none;overflow:visible}
     .headshell-joint{position:absolute;left:calc(50% - 11px);bottom:52px;width:10px;height:8px;border-radius:2px;background:var(--head);border:var(--head-b);box-shadow:inset 0 1px 1px rgba(255,255,255,.12);transform:rotate(15deg);transform-origin:center}
     .headshell-pro{position:absolute;bottom:20px;left:calc(50% - 7px);transform:translateX(-50%) rotate(25deg);transform-origin:50% 3px;width:17.6px;height:35.2px;background:var(--head);border-radius:2px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 1px rgba(255,255,255,.12);border:var(--head-b);opacity:1 !important;pointer-events:auto;cursor:grab}
@@ -927,7 +927,7 @@
     const ARM_TRACK_OFFSET_DEG = 2.8;
     const ARM_EDGE_ANGLE = 18.6 + ARM_TRACK_OFFSET_DEG;
     const ARM_END_ANGLE = ARM_EDGE_ANGLE + 20;
-    const ARM_TRANSITION_MS = 1400;
+    const ARM_TRANSITION_MS = 2200;
 
     function setRecordRotation(deg){
       if(record) record.style.transform = `rotate(${deg}deg)`;
@@ -1591,7 +1591,7 @@
           // 1) Needle drops to record edge
           // 2) Noise starts only after needle lands
           // 3) First track starts 2s later
-          const cueDropMs = 1200;
+          const cueDropMs = 1800;
           setTonearmAngle(ARM_EDGE_ANGLE, true, cueDropMs);
           target=0;
           speed=0;
