@@ -42,5 +42,26 @@
       "13. If I Needed Someone.mp3",
       "14. Run For Your Life.mp3"
     ]
+  },
+  {
+    "name": "MORRISON HOTEL",
+    "author": "THE DOORS",
+    "color": "#2f2a24",
+    "duration": "",
+    "folder": "Vinyl Collection/The Doors - Morrison Hotel",
+    "cover": "",
+    "tracks": [
+      "The Doors - Blue Sunday.MP3",
+      "The Doors - Indian Summer.MP3",
+      "The Doors - Land Ho!.MP3",
+      "The Doors - Maggie M'gill.MP3",
+      "The Doors - Peace Frog.MP3",
+      "The Doors - Queen Of The Highway.MP3",
+      "The Doors - Roadhouse Blues.MP3",
+      "The Doors - Ship Of Fools.MP3",
+      "The Doors - The Spy.MP3",
+      "The Doors - Waiting For The Sun.MP3",
+      "The Doors - You Make Me Real.MP3"
+    ]
   }
 ]

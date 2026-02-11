@@ -309,7 +309,126 @@
             currentScroll = Math.max(0, Math.min(maxScroll, currentScroll));
         }
 
+        function parseHrefList(html) {
+            const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+            const out = [];
+            Array.from(doc.querySelectorAll("a[href]")).forEach((a) => {
+                const rawHref = a.getAttribute("href");
+                if (!rawHref) return;
+                const href = String(rawHref).split("#")[0].split("?")[0];
+                if (!href) return;
+                if (href.startsWith("?") || href.startsWith("#")) return;
+                if (href === "../" || href === "..") return;
+                out.push(decodeURIComponent(href));
+            });
+            return out;
+        }
+
+        function deriveMetaFromFolder(folderName) {
+            const clean = String(folderName || "").trim();
+            const parts = clean.split(" - ").map((s) => s.trim()).filter(Boolean);
+            if (parts.length >= 2) {
+                return { author: parts[0].toUpperCase(), name: parts.slice(1).join(" - ").toUpperCase() };
+            }
+            return { author: "UNKNOWN ARTIST", name: clean.toUpperCase() || "UNKNOWN ALBUM" };
+        }
+
+        async function fetchTextSafe(path) {
+            try {
+                const res = await fetch(encodeURI(path), { cache: "no-store" });
+                if (!res.ok) return null;
+                return await res.text();
+            } catch (_) {
+                return null;
+            }
+        }
+
+        async function scanCollectionFolderAlbums() {
+            const roots = ["Vinyl Collection", "collection", "Collection"];
+            let root = "";
+            let rootHtml = null;
+            for (const r of roots) {
+                const html = await fetchTextSafe(`${r}/`);
+                if (html) {
+                    root = r;
+                    rootHtml = html;
+                    break;
+                }
+            }
+            if (!root || !rootHtml) return [];
+
+            const AUDIO_RE = /\.(mp3|flac|wav|m4a|aac|ogg)$/i;
+            const foundAudio = [];
+            const visitedDirs = new Set();
+
+            const walkDir = async (relativeDir, depth = 0) => {
+                if (depth > 5) return;
+                const dirPath = relativeDir ? `${root}/${relativeDir}` : root;
+                const key = dirPath.toLowerCase();
+                if (visitedDirs.has(key)) return;
+                visitedDirs.add(key);
+
+                const listing = relativeDir ? await fetchTextSafe(`${dirPath}/`) : rootHtml;
+                if (!listing) return;
+                const entries = parseHrefList(listing);
+                for (const entry of entries) {
+                    const clean = String(entry || "").replace(/^\.?\//, "").replace(/\/+$/g, "");
+                    if (!clean || clean === "." || clean === "..") continue;
+                    const nextRelative = relativeDir ? `${relativeDir}/${clean}` : clean;
+                    if (/\/$/.test(entry)) {
+                        await walkDir(nextRelative, depth + 1);
+                        continue;
+                    }
+                    if (AUDIO_RE.test(clean)) {
+                        foundAudio.push(nextRelative);
+                    }
+                }
+            };
+
+            await walkDir("", 0);
+
+            const grouped = new Map();
+            for (const relPath of foundAudio) {
+                const bits = relPath.split("/").filter(Boolean);
+                if (!bits.length) continue;
+                const folderName = bits[0];
+                const trackRel = bits.slice(1).join("/") || bits[0];
+                if (!grouped.has(folderName)) grouped.set(folderName, []);
+                grouped.get(folderName).push(trackRel);
+            }
+
+            const albums = [];
+            for (const [folderName, tracksRaw] of grouped.entries()) {
+                const tracks = tracksRaw
+                    .filter(Boolean)
+                    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+                if (!tracks.length) continue;
+                const meta = deriveMetaFromFolder(folderName);
+                albums.push({
+                    name: meta.name,
+                    author: meta.author,
+                    color: "#2b2b2b",
+                    duration: "",
+                    folder: `${root}/${folderName}`,
+                    cover: "",
+                    tracks
+                });
+            }
+            albums.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+            return albums;
+        }
+
         async function loadCollectionManifest() {
+            try {
+                const scanned = await scanCollectionFolderAlbums();
+                if (Array.isArray(scanned) && scanned.length) {
+                    applyCollectionData(scanned);
+                    try { localStorage.setItem(ARCHIVE_ALBUMS_KEY, JSON.stringify(collection)); } catch (_) {}
+                    return;
+                }
+            } catch (_) {
+                // fallback to manifest/cached/default below
+            }
             try {
                 const res = await fetch(COLLECTION_MANIFEST_URL, { cache: "no-store" });
                 if (!res.ok) throw new Error(`manifest status ${res.status}`);
@@ -322,16 +441,6 @@
             } catch (_) {
                 // fallback below
             }
-            try {
-                const raw = localStorage.getItem(ARCHIVE_ALBUMS_KEY);
-                if (raw) {
-                    const cached = JSON.parse(raw);
-                    if (Array.isArray(cached) && cached.length) {
-                        applyCollectionData(cached);
-                        return;
-                    }
-                }
-            } catch (_) {}
             applyCollectionData(DEFAULT_COLLECTION);
         }
 
@@ -507,11 +616,22 @@
             ctx.fillRect(0, 0, size, size);
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.textAlign = 'left';
-            ctx.font = `900 ${size * 0.05}px Inter`;
-            ctx.fillText(item.name, size * 0.08, size * 0.12);
-            ctx.font = `400 ${size * 0.022}px Inter`;
+            let titlePx = Math.round(size * 0.15); // 3x from old 0.05
+            ctx.font = `900 ${titlePx}px Inter`;
+            const titleMaxW = size * 0.84;
+            while (ctx.measureText(item.name).width > titleMaxW && titlePx > Math.round(size * 0.06)) {
+                titlePx -= 2;
+                ctx.font = `900 ${titlePx}px Inter`;
+            }
+            ctx.fillText(item.name, size * 0.08, size * 0.17);
+            let artistPx = Math.round(size * 0.066); // 3x from old 0.022
+            ctx.font = `400 ${artistPx}px Inter`;
+            while (ctx.measureText(item.author || "").width > titleMaxW && artistPx > Math.round(size * 0.03)) {
+                artistPx -= 1;
+                ctx.font = `400 ${artistPx}px Inter`;
+            }
             ctx.globalAlpha = 0.4;
-            ctx.fillText(item.author || "", size * 0.08, size * 0.16);
+            ctx.fillText(item.author || "", size * 0.08, size * 0.27);
             ctx.font = `900 ${size * 0.015}px Inter`;
             ctx.globalAlpha = 0.3;
             ctx.fillText("ARCHIVE CAT. NR", size * 0.08, size * 0.22);
@@ -1120,9 +1240,10 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        document.addEventListener("DOMContentLoaded", () => {
-            // Stable boot: use local collection immediately and initialize once.
-            applyCollectionData(DEFAULT_COLLECTION);
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Verify collection source before app init so archive is ready immediately.
+            await loadCollectionManifest();
+            if (!collection.length) applyCollectionData(DEFAULT_COLLECTION);
             refreshRecordLoadedState();
             try {
                 const saved = Number(localStorage.getItem(PLAYING_INDEX_KEY));
