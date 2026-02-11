@@ -1,0 +1,8 @@
+{
+  "cleanUrls": false,
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/player", "destination": "/vinyl-player.html" },
+    { "source": "/archive", "destination": "/archive.html" }
+  ]
+}
