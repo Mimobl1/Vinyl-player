@@ -995,6 +995,9 @@
     let archiveTransitioning = false;
     let archiveFrameReady = false;
     let archiveFrameLoading = null;
+    function getArchiveEmbedUrl(){
+      return `archive.html?embedded=1&v=${Date.now()}`;
+    }
     function ensureArchiveFrameReady(){
       if(archiveFrameReady) return Promise.resolve();
       if(archiveFrameLoading) return archiveFrameLoading;
@@ -1014,7 +1017,7 @@
         };
         archiveFrame.addEventListener("load", onLoad);
         if(archiveFrame.src === "about:blank"){
-          archiveFrame.src = "archive.html?embedded=1";
+          archiveFrame.src = getArchiveEmbedUrl();
         } else {
           // If src already set but cache is warm, ensure we still resolve.
           setTimeout(() => {
@@ -2300,7 +2303,7 @@
       idle(() => warmArchiveResourcesOnce());
       idle(() => {
         if(archiveFrame && archiveFrame.src === "about:blank"){
-          archiveFrame.src = "archive.html?embedded=1";
+          archiveFrame.src = getArchiveEmbedUrl();
         }
       });
       restoreSidebarState();

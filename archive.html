@@ -335,6 +335,7 @@
     </div>
 
     <script>
+        const COLLECTION_API_URLS = ["/api/collection", "/api/collection/"];
         const COLLECTION_MANIFEST_URL = "vinyl-collection.json";
         const DEFAULT_COLLECTION = [
             {
@@ -783,6 +784,23 @@
         }
 
         async function loadCollectionManifest() {
+            for (const apiUrl of COLLECTION_API_URLS) {
+                try {
+                    const bust = `t=${Date.now()}`;
+                    const apiRes = await fetch(`${apiUrl}?${bust}`, { cache: "no-store" });
+                    if (apiRes.ok) {
+                        const apiData = await apiRes.json();
+                        const parsedApi = Array.isArray(apiData) ? apiData : [];
+                        if (parsedApi.length) {
+                            await enrichAlbumDurations(parsedApi);
+                            applyCollectionData(parsedApi);
+                            return;
+                        }
+                    }
+                } catch (_) {
+                    // try next API URL
+                }
+            }
             try {
                 const scanned = await scanCollectionFolderAlbums();
                 if (Array.isArray(scanned) && scanned.length) {
