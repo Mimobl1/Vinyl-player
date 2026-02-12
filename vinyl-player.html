@@ -683,6 +683,27 @@
       color:#111;
       border:1px solid #d0d0d0;
     }
+    .feedback-snackbar{
+      position:fixed;
+      left:50%;
+      bottom:26px;
+      transform:translateX(-50%) translateY(18px);
+      z-index:8300;
+      background:rgba(18,18,18,.96);
+      color:#f3f3f3;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:999px;
+      padding:10px 14px;
+      font:600 12px/1 Roboto,Arial,sans-serif;
+      letter-spacing:.3px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .2s ease, transform .24s ease;
+    }
+    .feedback-snackbar.on{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
   </style>
 </head>
 
@@ -896,6 +917,7 @@
       </div>
     </div>
   </div>
+  <div class="feedback-snackbar" id="feedbackSnackbar">Cool, thanks for feedback. Enjoj!</div>
 
   <script>
     "use strict";
@@ -1120,6 +1142,7 @@
     let feedbackSelectionCount = 0;
     let feedbackLastAlbumKey = "";
     let feedbackTimer = null;
+    let feedbackToastTimer = null;
     let feedbackWaitingNextSelection = false;
     let feedbackSent = false;
 
@@ -1156,6 +1179,19 @@
     function scheduleFeedbackPrompt(){
       clearFeedbackTimer();
       feedbackTimer = setTimeout(showFeedbackModal, FEEDBACK_DELAY_MS);
+    }
+
+    function showFeedbackSnackbar(){
+      const bar = $("feedbackSnackbar");
+      if(!bar) return;
+      if(feedbackToastTimer){
+        clearTimeout(feedbackToastTimer);
+        feedbackToastTimer = null;
+      }
+      bar.classList.add("on");
+      feedbackToastTimer = setTimeout(() => {
+        bar.classList.remove("on");
+      }, 2600);
     }
 
     function onAlbumSelectionForFeedback(selected){
@@ -2229,7 +2265,9 @@
           name: feedbackName,
           message: txt,
           album: currentAlbumName || "",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          sentDate: new Date().toLocaleDateString(),
+          sentTime: new Date().toLocaleTimeString()
         };
         try {
           const key = "vinyl_feedback_queue_v1";
@@ -2250,6 +2288,7 @@
         const input = $("feedbackInput");
         if(input) input.value = "";
         if(nameInput) nameInput.value = "";
+        showFeedbackSnackbar();
       });
       if (archiveFrame) {
         archiveFrame.addEventListener("load", () => {

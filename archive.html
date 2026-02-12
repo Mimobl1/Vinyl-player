@@ -172,6 +172,130 @@
             white-space: nowrap;
             pointer-events: none;
         }
+        .feedback-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 260;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .24s ease;
+        }
+        .feedback-modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .feedback-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,.5);
+        }
+        .feedback-card {
+            position: relative;
+            width: min(92vw, 430px);
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,.14);
+            background: rgba(16,16,16,.96);
+            color: #fff;
+            box-shadow: 0 20px 52px rgba(0,0,0,.5);
+            padding: 18px;
+            z-index: 1;
+        }
+        .feedback-title {
+            margin: 0 0 8px;
+            font-size: 19px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: .1px;
+        }
+        .feedback-label {
+            margin: 0 0 8px;
+            font-size: 13px;
+            opacity: .82;
+        }
+        .feedback-input, .feedback-name {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.2);
+            background: rgba(255,255,255,.04);
+            color: inherit;
+            font: 500 14px/1.4 Roboto, Arial, sans-serif;
+            padding: 10px 12px;
+            outline: none;
+        }
+        .feedback-input {
+            min-height: 88px;
+            resize: vertical;
+        }
+        .feedback-name {
+            margin-top: 10px;
+            height: 36px;
+            line-height: 1.2;
+        }
+        .feedback-input:focus, .feedback-name:focus {
+            border-color: rgba(255,255,255,.42);
+            box-shadow: 0 0 0 2px rgba(255,255,255,.12);
+        }
+        .feedback-error {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #d3d3d3;
+            min-height: 16px;
+            opacity: 0;
+            transition: opacity .16s ease;
+        }
+        .feedback-error.show { opacity: 1; }
+        .feedback-name.invalid {
+            border-color: #cfcfcf;
+            box-shadow: 0 0 0 2px rgba(255,255,255,.12);
+        }
+        .feedback-actions {
+            margin-top: 12px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .feedback-btn {
+            border: 1px solid #3a3a3a;
+            border-radius: 9px;
+            height: 34px;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            cursor: pointer;
+            color: #f0f0f0;
+            background: #171717;
+        }
+        .feedback-btn.send {
+            background: #f0f0f0;
+            color: #111;
+            border-color: #d0d0d0;
+        }
+        .feedback-snackbar {
+            position: fixed;
+            left: 50%;
+            bottom: 26px;
+            transform: translateX(-50%) translateY(18px);
+            z-index: 280;
+            background: rgba(18,18,18,.96);
+            color: #f3f3f3;
+            border: 1px solid rgba(255,255,255,.14);
+            border-radius: 999px;
+            padding: 10px 14px;
+            font: 600 12px/1 Roboto, Arial, sans-serif;
+            letter-spacing: .3px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s ease, transform .24s ease;
+        }
+        .feedback-snackbar.on {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -180,6 +304,21 @@
     <div id="route-fade" aria-hidden="true"></div>
     <div id="audio-hint">Zvuk aktivan nakon interakcije</div>
     <button id="play-button">PLAY</button>
+    <div class="feedback-modal" id="feedbackModal" aria-hidden="true">
+        <div class="feedback-backdrop"></div>
+        <div class="feedback-card" role="dialog" aria-modal="true" aria-labelledby="feedbackHeading">
+            <h3 class="feedback-title" id="feedbackHeading">Hey there, enjoyin some vinyl vibes?</h3>
+            <p class="feedback-label">Let me know what you think below</p>
+            <textarea class="feedback-input" id="feedbackInput" rows="4"></textarea>
+            <input class="feedback-name" id="feedbackNameInput" type="text" placeholder="Your name" />
+            <div class="feedback-error" id="feedbackNameError">Please enter your name.</div>
+            <div class="feedback-actions">
+                <button class="feedback-btn cancel" id="feedbackCancelBtn" type="button">Cancel</button>
+                <button class="feedback-btn send" id="feedbackSendBtn" type="button">Send feedback</button>
+            </div>
+        </div>
+    </div>
+    <div class="feedback-snackbar" id="feedbackSnackbar">Cool, thanks for feedback. Enjoj!</div>
     <div id="now-playing-badge">Now Playing</div>
 
     <div class="ui-overlay">
@@ -275,6 +414,7 @@
         const ALBUM_DURATION_CACHE_KEY = "vinyl_album_duration_cache_v1";
         const PLAYBACK_STATE_KEY = "vinyl_player_playback_state_v1";
         const RECORD_LOADED_KEY = "vinyl_record_loaded_v1";
+        const FEEDBACK_DELAY_MS = 30000;
         const routeFade = document.getElementById('route-fade');
         const EMBEDDED = new URLSearchParams(window.location.search).get("embedded") === "1";
         const archiveDeck = new Audio();
@@ -299,6 +439,75 @@
         const playBtn = document.getElementById('play-button');
         const nowPlayingBadge = document.getElementById('now-playing-badge');
         const playerNavLink = document.getElementById('playerNavLink');
+        let feedbackSelectionCount = 0;
+        let feedbackLastAlbumKey = "";
+        let feedbackTimer = null;
+        let feedbackToastTimer = null;
+        let feedbackWaitingNextSelection = false;
+        let feedbackSent = false;
+
+        function clearFeedbackTimer() {
+            if (feedbackTimer) {
+                clearTimeout(feedbackTimer);
+                feedbackTimer = null;
+            }
+        }
+
+        function hideFeedbackModal() {
+            const modal = document.getElementById("feedbackModal");
+            if (!modal) return;
+            modal.classList.remove("open");
+            modal.setAttribute("aria-hidden", "true");
+        }
+
+        function showFeedbackModal() {
+            if (feedbackSent) return;
+            if (launchIndex !== -1 || routeFade?.classList.contains("on")) {
+                feedbackTimer = setTimeout(showFeedbackModal, 800);
+                return;
+            }
+            const modal = document.getElementById("feedbackModal");
+            if (!modal) return;
+            modal.classList.add("open");
+            modal.setAttribute("aria-hidden", "false");
+            document.getElementById("feedbackNameError")?.classList.remove("show");
+            document.getElementById("feedbackNameInput")?.classList.remove("invalid");
+            document.getElementById("feedbackInput")?.focus();
+        }
+
+        function scheduleFeedbackPrompt() {
+            clearFeedbackTimer();
+            feedbackTimer = setTimeout(showFeedbackModal, FEEDBACK_DELAY_MS);
+        }
+
+        function showFeedbackSnackbar() {
+            const bar = document.getElementById("feedbackSnackbar");
+            if (!bar) return;
+            if (feedbackToastTimer) {
+                clearTimeout(feedbackToastTimer);
+                feedbackToastTimer = null;
+            }
+            bar.classList.add("on");
+            feedbackToastTimer = setTimeout(() => {
+                bar.classList.remove("on");
+            }, 2600);
+        }
+
+        function onAlbumSelectionForFeedback(selected) {
+            const key = `${String(selected?.author || "").trim().toLowerCase()}::${String(selected?.name || "").trim().toLowerCase()}`;
+            if (!key || key === feedbackLastAlbumKey) return;
+            feedbackLastAlbumKey = key;
+            feedbackSelectionCount += 1;
+            if (feedbackSent) return;
+            if (feedbackWaitingNextSelection) {
+                feedbackWaitingNextSelection = false;
+                scheduleFeedbackPrompt();
+                return;
+            }
+            if (feedbackSelectionCount === 2) {
+                scheduleFeedbackPrompt();
+            }
+        }
 
         async function ensureArchiveFontsReady() {
             if (!document.fonts || !document.fonts.load) return;
@@ -1185,6 +1394,7 @@
 
         function startLaunchToPlayer(idx, url, selectedPayload = null) {
             if (launchIndex !== -1) return;
+            onAlbumSelectionForFeedback(selectedPayload || collection[idx] || null);
             bgBridge.active = false;
             try { archiveDeck.pause(); } catch(_) {}
             launchIndex = idx;
@@ -1623,6 +1833,56 @@
         });
 
         document.addEventListener("DOMContentLoaded", async () => {
+            document.getElementById("feedbackCancelBtn")?.addEventListener("click", () => {
+                clearFeedbackTimer();
+                hideFeedbackModal();
+                feedbackWaitingNextSelection = true;
+                const msgInput = document.getElementById("feedbackInput");
+                const nameInput = document.getElementById("feedbackNameInput");
+                if (msgInput) msgInput.value = "";
+                if (nameInput) {
+                    nameInput.value = "";
+                    nameInput.classList.remove("invalid");
+                }
+                document.getElementById("feedbackNameError")?.classList.remove("show");
+            });
+            document.getElementById("feedbackSendBtn")?.addEventListener("click", () => {
+                const nameInput = document.getElementById("feedbackNameInput");
+                const name = (nameInput?.value || "").trim();
+                if (!name) {
+                    nameInput?.classList.add("invalid");
+                    document.getElementById("feedbackNameError")?.classList.add("show");
+                    nameInput?.focus();
+                    return;
+                }
+                nameInput?.classList.remove("invalid");
+                document.getElementById("feedbackNameError")?.classList.remove("show");
+                const message = (document.getElementById("feedbackInput")?.value || "").trim();
+                const payload = {
+                    name,
+                    message,
+                    album: collection[Math.max(0, Math.min(totalMeshes - 1, Math.round(currentScroll / scrollSensitivity)))]?.name || "",
+                    timestamp: new Date().toISOString(),
+                    sentDate: new Date().toLocaleDateString(),
+                    sentTime: new Date().toLocaleTimeString()
+                };
+                try {
+                    const key = "vinyl_feedback_queue_v1";
+                    const prev = JSON.parse(localStorage.getItem(key) || "[]");
+                    if (Array.isArray(prev)) {
+                        prev.push(payload);
+                        localStorage.setItem(key, JSON.stringify(prev));
+                    }
+                } catch(_) {}
+                try { console.info("[feedback]", payload); } catch(_) {}
+                feedbackSent = true;
+                clearFeedbackTimer();
+                hideFeedbackModal();
+                const msgInput = document.getElementById("feedbackInput");
+                if (msgInput) msgInput.value = "";
+                if (nameInput) nameInput.value = "";
+                showFeedbackSnackbar();
+            });
             // Verify collection source before app init so archive is ready immediately.
             await loadCollectionManifest();
             if (!collection.length) applyCollectionData(DEFAULT_COLLECTION);
