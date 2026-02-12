@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Milan</title>
+  <style>
+    :root{
+      --bg:#0a0a0a;
+      --card:#111;
+      --line:#262626;
+      --text:#f3f3f3;
+      --muted:#9c9c9c;
+      --danger:#d0d0d0;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:radial-gradient(circle at 50% 20%, #141414 0%, #090909 58%, #060606 100%);
+      padding:24px;
+    }
+    .wrap{
+      max-width:980px;
+      margin:0 auto;
+    }
+    .panel{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:16px;
+      box-shadow:0 16px 36px rgba(0,0,0,.45);
+    }
+    .title{
+      margin:0 0 6px;
+      font-size:24px;
+      font-weight:700;
+      letter-spacing:.4px;
+    }
+    .sub{
+      margin:0 0 14px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    input,textarea,button{
+      font:500 14px/1.2 Roboto,Arial,sans-serif;
+    }
+    input{
+      height:38px;
+      border-radius:10px;
+      border:1px solid #343434;
+      background:#0f0f0f;
+      color:var(--text);
+      padding:0 12px;
+      outline:none;
+      min-width:220px;
+    }
+    input:focus{
+      border-color:#676767;
+      box-shadow:0 0 0 2px rgba(255,255,255,.08);
+    }
+    button{
+      height:38px;
+      border:1px solid #3a3a3a;
+      border-radius:10px;
+      background:#191919;
+      color:var(--text);
+      padding:0 14px;
+      text-transform:uppercase;
+      letter-spacing:.45px;
+      cursor:pointer;
+    }
+    button:hover{filter:brightness(1.1)}
+    .error{
+      margin-top:8px;
+      color:#cfcfcf;
+      font-size:12px;
+      min-height:16px;
+      opacity:0;
+      transition:opacity .16s ease;
+    }
+    .error.show{opacity:1}
+    .toolbar{
+      margin:12px 0 0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .count{
+      font-size:12px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:1px;
+    }
+    .list{
+      margin-top:14px;
+      display:grid;
+      gap:10px;
+    }
+    .item{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px;
+      background:#0f0f0f;
+    }
+    .item-top{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:baseline;
+      flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .name{
+      font-size:14px;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    .meta{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .msg{
+      margin:0;
+      white-space:pre-wrap;
+      color:#f0f0f0;
+      line-height:1.5;
+      font-size:14px;
+    }
+    .hidden{display:none!important}
+    .empty{
+      border:1px dashed #353535;
+      border-radius:12px;
+      padding:18px;
+      color:var(--muted);
+      text-align:center;
+      font-size:13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel" id="loginPanel">
+      <h1 class="title">Admin Milan</h1>
+      <p class="sub">Enter password to access feedback messages.</p>
+      <div class="row">
+        <input id="passwordInput" type="password" placeholder="Password" />
+        <button id="unlockBtn" type="button">Unlock</button>
+      </div>
+      <div class="error" id="loginError">Wrong password.</div>
+    </section>
+
+    <section class="panel hidden" id="adminPanel">
+      <h2 class="title">Feedback Inbox</h2>
+      <p class="sub">Messages saved locally from feedback prompt.</p>
+      <div class="toolbar">
+        <span class="count" id="msgCount">0 messages</span>
+        <div class="row">
+          <button id="refreshBtn" type="button">Refresh</button>
+          <button id="clearBtn" type="button">Clear all</button>
+        </div>
+      </div>
+      <div class="list" id="msgList"></div>
+    </section>
+  </div>
+
+  <script>
+    "use strict";
+
+    const PASS = "3123";
+    const STORAGE_KEY = "vinyl_feedback_queue_v1";
+    const SESSION_KEY = "admin_milan_unlocked_v1";
+
+    const $ = (id) => document.getElementById(id);
+
+    function fmtDate(iso){
+      try{
+        return new Date(iso).toLocaleString();
+      }catch(_){
+        return "";
+      }
+    }
+
+    function readMessages(){
+      try{
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        return Array.isArray(data) ? data : [];
+      }catch(_){
+        return [];
+      }
+    }
+
+    function renderMessages(){
+      const list = $("msgList");
+      const rows = readMessages().slice().reverse();
+      $("msgCount").textContent = rows.length === 1 ? "1 message" : `${rows.length} messages`;
+      if(!rows.length){
+        list.innerHTML = '<div class="empty">No feedback yet.</div>';
+        return;
+      }
+      list.innerHTML = rows.map((m) => {
+        const name = String(m?.name || "Unknown");
+        const album = String(m?.album || "");
+        const message = String(m?.message || "").trim() || "(empty message)";
+        const time = fmtDate(m?.timestamp || "");
+        return `
+          <article class="item">
+            <div class="item-top">
+              <span class="name">${escapeHtml(name)}</span>
+              <span class="meta">${escapeHtml(album)}${album && time ? " • " : ""}${escapeHtml(time)}</span>
+            </div>
+            <p class="msg">${escapeHtml(message)}</p>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(v){
+      return String(v)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function unlock(){
+      const val = ($("passwordInput").value || "").trim();
+      if(val !== PASS){
+        $("loginError").classList.add("show");
+        return;
+      }
+      $("loginError").classList.remove("show");
+      $("loginPanel").classList.add("hidden");
+      $("adminPanel").classList.remove("hidden");
+      try { sessionStorage.setItem(SESSION_KEY, "1"); } catch(_) {}
+      renderMessages();
+    }
+
+    function bootstrap(){
+      $("unlockBtn").addEventListener("click", unlock);
+      $("passwordInput").addEventListener("keydown", (e) => {
+        if(e.key === "Enter") unlock();
+      });
+      $("refreshBtn").addEventListener("click", renderMessages);
+      $("clearBtn").addEventListener("click", () => {
+        if(!confirm("Delete all feedback messages?")) return;
+        try { localStorage.removeItem(STORAGE_KEY); } catch(_) {}
+        renderMessages();
+      });
+      try{
+        if(sessionStorage.getItem(SESSION_KEY) === "1"){
+          $("loginPanel").classList.add("hidden");
+          $("adminPanel").classList.remove("hidden");
+          renderMessages();
+        }
+      }catch(_){}
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>

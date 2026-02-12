@@ -3,6 +3,7 @@
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/player", "destination": "/vinyl-player.html" },
-    { "source": "/archive", "destination": "/archive.html" }
+    { "source": "/archive", "destination": "/archive.html" },
+    { "source": "/admin-milan", "destination": "/admin-milan/index.html" }
   ]
 }

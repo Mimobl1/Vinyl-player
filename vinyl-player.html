@@ -551,6 +551,138 @@
       border:0;
       background:#000;
     }
+    .feedback-modal{
+      position:fixed;
+      inset:0;
+      z-index:8200;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      opacity:0;
+      transition:opacity .24s ease;
+    }
+    .feedback-modal.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .feedback-backdrop{
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,.42);
+      backdrop-filter:blur(2px);
+      -webkit-backdrop-filter:blur(2px);
+    }
+    .feedback-card{
+      position:relative;
+      width:min(92vw, 430px);
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(16,16,16,.94);
+      color:#fff;
+      box-shadow:0 20px 52px rgba(0,0,0,.5);
+      padding:18px;
+      z-index:1;
+    }
+    body[data-theme="light"] .feedback-card{
+      background:rgba(242,242,242,.97);
+      color:#111;
+      border-color:rgba(0,0,0,.1);
+    }
+    .feedback-title{
+      margin:0 0 8px;
+      font-size:19px;
+      font-weight:700;
+      line-height:1.2;
+      letter-spacing:.1px;
+    }
+    .feedback-label{
+      margin:0 0 8px;
+      font-size:13px;
+      opacity:.8;
+    }
+    .feedback-input{
+      width:100%;
+      min-height:88px;
+      resize:vertical;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.04);
+      color:inherit;
+      font:500 14px/1.4 Inter,system-ui,sans-serif;
+      padding:10px 12px;
+      outline:none;
+    }
+    body[data-theme="light"] .feedback-input{
+      border-color:rgba(0,0,0,.18);
+      background:rgba(0,0,0,.02);
+    }
+    .feedback-input:focus{
+      border-color:rgba(255,255,255,.42);
+      box-shadow:0 0 0 2px rgba(255,255,255,.12);
+    }
+    .feedback-name{
+      width:100%;
+      margin-top:10px;
+      height:36px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.04);
+      color:inherit;
+      font:500 14px/1.2 Inter,system-ui,sans-serif;
+      padding:0 12px;
+      outline:none;
+    }
+    body[data-theme="light"] .feedback-name{
+      border-color:rgba(0,0,0,.18);
+      background:rgba(0,0,0,.02);
+    }
+    .feedback-name:focus{
+      border-color:rgba(255,255,255,.42);
+      box-shadow:0 0 0 2px rgba(255,255,255,.12);
+    }
+    .feedback-error{
+      margin-top:6px;
+      font-size:12px;
+      color:#ff6f6f;
+      min-height:16px;
+      opacity:0;
+      transition:opacity .16s ease;
+    }
+    .feedback-error.show{opacity:1}
+    .feedback-name.invalid{
+      border-color:#ff6f6f;
+      box-shadow:0 0 0 2px rgba(255,111,111,.16);
+    }
+    .feedback-actions{
+      margin-top:12px;
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+    }
+    .feedback-btn{
+      border:0;
+      border-radius:9px;
+      height:34px;
+      padding:0 12px;
+      font-size:12px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      cursor:pointer;
+    }
+    .feedback-btn.cancel{
+      background:rgba(255,255,255,.12);
+      color:inherit;
+    }
+    body[data-theme="light"] .feedback-btn.cancel{
+      background:rgba(0,0,0,.08);
+    }
+    .feedback-btn.send{
+      background:#f0f0f0;
+      color:#111;
+      border:1px solid #d0d0d0;
+    }
   </style>
 </head>
 
@@ -750,6 +882,20 @@
   <div class="archive-layer" id="archiveLayer" aria-hidden="true">
     <iframe class="archive-frame" id="archiveFrame" src="about:blank" title="Archive"></iframe>
   </div>
+  <div class="feedback-modal" id="feedbackModal" aria-hidden="true">
+    <div class="feedback-backdrop"></div>
+    <div class="feedback-card" role="dialog" aria-modal="true" aria-labelledby="feedbackHeading">
+      <h3 class="feedback-title" id="feedbackHeading">Hey there, enjoyin some vinyl vibes?</h3>
+      <p class="feedback-label">Let me know what you think below</p>
+      <textarea class="feedback-input" id="feedbackInput" rows="4"></textarea>
+      <input class="feedback-name" id="feedbackNameInput" type="text" placeholder="Your name" />
+      <div class="feedback-error" id="feedbackNameError">Please enter your name.</div>
+      <div class="feedback-actions">
+        <button class="feedback-btn cancel" id="feedbackCancelBtn" type="button">Cancel</button>
+        <button class="feedback-btn send" id="feedbackSendBtn" type="button">Send feedback</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     "use strict";
@@ -758,6 +904,7 @@
     const overlayImage = $("vinylOverlayImage");
     const SELECTED_ALBUM_KEY = "vinyl_selected_album_v1";
     const RECORD_LOADED_KEY = "vinyl_record_loaded_v1";
+    const FEEDBACK_DELAY_MS = 30000;
 
     if (overlayImage) {
       // Show overlay only when image exists and is decoded.
@@ -970,6 +1117,65 @@
     endSound.preload = "auto";
     endSound.volume = 0.9;
     let playStartToken = 0;
+    let feedbackSelectionCount = 0;
+    let feedbackLastAlbumKey = "";
+    let feedbackTimer = null;
+    let feedbackWaitingNextSelection = false;
+    let feedbackSent = false;
+
+    function clearFeedbackTimer(){
+      if(feedbackTimer){
+        clearTimeout(feedbackTimer);
+        feedbackTimer = null;
+      }
+    }
+
+    function hideFeedbackModal(){
+      const modal = $("feedbackModal");
+      if(!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function showFeedbackModal(){
+      if(feedbackSent) return;
+      if(archiveLayer?.classList.contains("open")){
+        feedbackTimer = setTimeout(showFeedbackModal, 800);
+        return;
+      }
+      const modal = $("feedbackModal");
+      if(!modal) return;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      const error = $("feedbackNameError");
+      if(error) error.classList.remove("show");
+      $("feedbackNameInput")?.classList.remove("invalid");
+      $("feedbackInput")?.focus();
+    }
+
+    function scheduleFeedbackPrompt(){
+      clearFeedbackTimer();
+      feedbackTimer = setTimeout(showFeedbackModal, FEEDBACK_DELAY_MS);
+    }
+
+    function onAlbumSelectionForFeedback(selected){
+      const key = `${String(selected?.author || "").trim().toLowerCase()}::${String(selected?.name || "").trim().toLowerCase()}`;
+      if(!key || key === feedbackLastAlbumKey) return;
+      feedbackLastAlbumKey = key;
+      feedbackSelectionCount += 1;
+
+      if(feedbackSent) return;
+
+      if(feedbackWaitingNextSelection){
+        feedbackWaitingNextSelection = false;
+        scheduleFeedbackPrompt();
+        return;
+      }
+
+      if(feedbackSelectionCount === 2){
+        scheduleFeedbackPrompt();
+      }
+    }
     let targetVolume = 0.8;
 
     const record=$("vinylRecord"),platter=$("platter"),timer=$("timer"),sideDisplay=$("sideDisplay"),sideStamp=$("sideStamp"),labelSideText=$("labelSideText"),nowPlayingLabel=$("nowPlayingLabel");
@@ -1546,6 +1752,7 @@
 
     async function applySelectedAlbumAndStart(selected){
       if(!selected || !selected.name) return;
+      onAlbumSelectionForFeedback(selected);
       const shouldAutoResume = powered && (playing || leadInNoiseActive || !deckAudio.paused || !!playT);
       try { localStorage.setItem(SELECTED_ALBUM_KEY, JSON.stringify(selected)); } catch(_) {}
       // Reset transport button visual state when switching albums.
@@ -1993,6 +2200,57 @@
     document.body.classList.add("no-record");
     window.addEventListener("message", handleArchiveMessage);
     document.addEventListener('DOMContentLoaded', async ()=>{
+      $("feedbackCancelBtn")?.addEventListener("click", () => {
+        clearFeedbackTimer();
+        hideFeedbackModal();
+        feedbackWaitingNextSelection = true;
+        const input = $("feedbackInput");
+        if(input) input.value = "";
+        const nameInput = $("feedbackNameInput");
+        if(nameInput){
+          nameInput.value = "";
+          nameInput.classList.remove("invalid");
+        }
+        $("feedbackNameError")?.classList.remove("show");
+      });
+      $("feedbackSendBtn")?.addEventListener("click", () => {
+        const nameInput = $("feedbackNameInput");
+        const feedbackName = (nameInput?.value || "").trim();
+        if(!feedbackName){
+          nameInput?.classList.add("invalid");
+          $("feedbackNameError")?.classList.add("show");
+          nameInput?.focus();
+          return;
+        }
+        nameInput?.classList.remove("invalid");
+        $("feedbackNameError")?.classList.remove("show");
+        const txt = ($("feedbackInput")?.value || "").trim();
+        const payload = {
+          name: feedbackName,
+          message: txt,
+          album: currentAlbumName || "",
+          timestamp: new Date().toISOString()
+        };
+        try {
+          const key = "vinyl_feedback_queue_v1";
+          const prev = JSON.parse(localStorage.getItem(key) || "[]");
+          if(Array.isArray(prev)){
+            prev.push(payload);
+            localStorage.setItem(key, JSON.stringify(prev));
+          }
+        } catch(_) {}
+        try {
+          console.info("[feedback]", payload);
+        } catch(_) {}
+        if(txt || feedbackName){
+          feedbackSent = true;
+        }
+        clearFeedbackTimer();
+        hideFeedbackModal();
+        const input = $("feedbackInput");
+        if(input) input.value = "";
+        if(nameInput) nameInput.value = "";
+      });
       if (archiveFrame) {
         archiveFrame.addEventListener("load", () => {
           archiveFrameReady = true;
