@@ -14,7 +14,7 @@
         }
 
         body {
-            background-color: #020202;
+            background: #000;
             color: #ffffff;
             font-family: 'Roboto', sans-serif;
             margin: 0;
@@ -148,15 +148,29 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
+            position: relative;
         }
         .counter-text {
-            text-align: left;
+            text-align: right;
             font-size: 12px;
             opacity: 0.34;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            text-transform: none;
+            letter-spacing: 1px;
             line-height: 1.4;
+        }
+        .archive-title {
+            position: absolute;
+            left: 50%;
+            top: 42px;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: rgba(255,255,255,0.42);
+            font-weight: 300;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -171,8 +185,9 @@
     <div class="ui-overlay">
         <div class="top-bar">
             <div class="counter-text" id="counter">
-                1 PLOCA
+                0 Albums
             </div>
+            <div class="archive-title">Album Archive</div>
             <a class="top-nav-btn" href="vinyl-player.html" aria-label="Open Player" id="playerNavLink">
                 Player
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
@@ -334,13 +349,12 @@
 
         function uniqueAlbumColorByIndex(index) {
             const i = Math.max(0, Number(index) || 0);
-            // Unique dark tint per album with stronger saturation and safe cap.
+            // Unique dark tint per album with stronger saturation.
             const hue = (i * 137.50776405 + 210) % 360;
             let sat = 42 + ((i * 13) % 20);      // 42..61
-            // Extra saturation bias for blue/green region.
             if ((hue >= 160 && hue <= 260) || (hue >= 80 && hue <= 155)) sat += 8;
-            sat = Math.min(70, sat);             // prevent neon look
-            const light = 20 + ((i * 7) % 9);    // 20..28
+            sat = Math.min(70, sat);
+            const light = 20 + ((i * 7) % 8);    // 20..27
             return hslToHex(hue, sat, light);
         }
 
@@ -751,6 +765,24 @@
             return new THREE.CanvasTexture(canvas);
         }
 
+        function generateArchiveBackgroundTexture() {
+            const canvas = document.createElement("canvas");
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext("2d");
+            // Single circular falloff (1x1 circle feel), kept dark.
+            const grad = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
+            grad.addColorStop(0, "#000");
+            grad.addColorStop(1, "#111");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(0,0,0,0.35)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+
         function generateCoverTexture(item, size = 512) {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
@@ -793,6 +825,10 @@
                 .replace(/^\s*\d+\s*[\.\-\)]\s*/i, "")
                 .replace(/^\s*[^-]+-\s*/i, "")
                 .replace(/\.(mp3|flac|wav|m4a|aac|ogg)\s*$/i, "")
+                .replace(/\s*\((19|20)\d{2}\)\s*$/i, "")
+                .replace(/\s*\[[^\]]+\]\s*$/i, "")
+                .replace(/[_]+/g, " ")
+                .replace(/\s+/g, " ")
                 .trim();
             const wrapText = (textVal, maxWidth, maxLines, lineHeight, x, y) => {
                 const words = String(textVal || "").split(/\s+/).filter(Boolean);
@@ -859,10 +895,22 @@
             ctx.save();
             ctx.globalCompositeOperation = "overlay";
             const overlay = ctx.createLinearGradient(0, 0, size, size);
-            overlay.addColorStop(0, "rgba(255,255,255,0)");
-            overlay.addColorStop(1, "rgba(0,0,0,0.9)");
+            overlay.addColorStop(0, "rgba(0,0,0,0.3)");
+            overlay.addColorStop(1, "rgba(0,0,0,0.6)");
             ctx.fillStyle = overlay;
             ctx.fillRect(0, 0, size, size);
+            ctx.restore();
+
+            // Visible grain over the gradient.
+            const seed = hash(item.name || "");
+            ctx.save();
+            ctx.globalAlpha = 0.16;
+            for (let i = 0; i < 7600; i += 1) {
+                const x = (seed * (i + 31) * 1103515245 + 12345) % size;
+                const y = (seed * (i + 67) * 214013 + 2531011) % size;
+                ctx.fillStyle = (i % 2 === 0) ? "rgba(255,255,255,1)" : "rgba(0,0,0,1)";
+                ctx.fillRect(x, y, 2, 2);
+            }
             ctx.restore();
 
             // Typography/layout based on provided design
@@ -941,6 +989,20 @@
                 }
                 return v.toLowerCase();
             };
+            const desaturateAndDarken = (hex, desat = 0.45, darken = 0.34) => {
+                const norm = toHex(hex);
+                if (!norm) return "#262626";
+                const r = parseInt(norm.slice(1, 3), 16);
+                const g = parseInt(norm.slice(3, 5), 16);
+                const b = parseInt(norm.slice(5, 7), 16);
+                const gray = (r + g + b) / 3;
+                const d = Math.max(0, Math.min(1, desat));
+                const k = Math.max(0, Math.min(1, darken));
+                const nr = Math.round((r * (1 - d) + gray * d) * (1 - k));
+                const ng = Math.round((g * (1 - d) + gray * d) * (1 - k));
+                const nb = Math.round((b * (1 - d) + gray * d) * (1 - k));
+                return `rgb(${nr}, ${ng}, ${nb})`;
+            };
             const mixHexWithWhite = (hex, amount = 0.10) => {
                 const norm = toHex(hex);
                 if (!norm) return "#efe9d8";
@@ -965,7 +1027,7 @@
             ctx.beginPath();
             ctx.arc(c, c, r, 0, Math.PI * 2);
             ctx.closePath();
-            ctx.fillStyle = toHex(item.color || "") || "#2b2b2b";
+            ctx.fillStyle = desaturateAndDarken(item.color || "", 0.5, 0.38);
             ctx.fill();
 
             ctx.strokeStyle = "#252525";
@@ -1043,7 +1105,7 @@
             
             const labelTexture = generateArchiveLabelTexture(item, "A", 512);
             const labelGeo = new THREE.CircleGeometry(1.05, 64);
-            const labelMat = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.95, metalness: 0.0 });
+            const labelMat = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.5, metalness: 0.6 });
             const labelMesh = new THREE.Mesh(labelGeo, labelMat);
             labelMesh.position.y = 0.026;
             labelMesh.rotation.x = -Math.PI / 2;
@@ -1130,7 +1192,7 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x020202);
+            scene.background = generateArchiveBackgroundTexture();
             scene.fog = null;
 
             camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -1146,20 +1208,18 @@
             renderer.outputEncoding = THREE.sRGBEncoding;
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.1)); 
-            
-            const radialMain = new THREE.PointLight(0xffffff, 2.8, 24);
+            const radialMain = new THREE.PointLight(0xffffff, 1.68, 24);
             radialMain.position.set(-3, 10, 16);
             radialMain.decay = 3.2;
             scene.add(radialMain);
 
-            const radialSub = new THREE.PointLight(0xffffff, 0.6, 25);
+            const radialSub = new THREE.PointLight(0xffffff, 0.3, 25);
             radialSub.position.set(6, 3, 14);
             radialSub.decay = 2.0;
             radialSub.layers.set(DISK_LAYER);
             scene.add(radialSub);
 
-            const reflectionLight = new THREE.PointLight(0xffffff, 0.25, 50);
+            const reflectionLight = new THREE.PointLight(0xffffff, 0.125, 50);
             reflectionLight.position.set(4.75, 8, 18); 
             reflectionLight.layers.set(DISK_LAYER);
             scene.add(reflectionLight);
@@ -1176,13 +1236,13 @@
                 const material = new THREE.MeshStandardMaterial({ 
                     map: texture, 
                     roughness: 0.5, 
-                    metalness: 0.8,
+                    metalness: 0.65,
                     transparent: true 
                 });
                 const edgeMat = new THREE.MeshStandardMaterial({ 
                     color: new THREE.Color(item.color), 
                     roughness: 0.5, 
-                    metalness: 0.8,
+                    metalness: 0.65,
                     transparent: true 
                 });
                 
@@ -1390,7 +1450,7 @@
                 lastIndex = displayIdx;
             }
             
-            document.getElementById('counter').innerText = `${totalMeshes} PLOCA`;
+            document.getElementById('counter').innerText = `${totalMeshes} Albums`;
 
             let playBtnUpdated = false;
             let nowPlayingUpdated = false;
@@ -1529,28 +1589,27 @@
             if (!hasLoadedRecord) {
                 playingIndex = -1;
             }
-            try {
-                const raw = localStorage.getItem(SCROLL_STATE_KEY);
-                if (raw) {
-                    const state = JSON.parse(raw);
-                    const sTarget = Number(state?.targetScroll);
-                    const sCurrent = Number(state?.currentScroll);
-                    const sOpen = Number(state?.openIndex);
-                    if (Number.isFinite(sTarget)) targetScroll = Math.max(0, Math.min(maxScroll, sTarget));
-                    if (Number.isFinite(sCurrent)) currentScroll = Math.max(0, Math.min(maxScroll, sCurrent));
-                    if (Number.isFinite(sOpen) && sOpen >= 0 && sOpen < totalMeshes) {
-                        openStates.fill(false);
-                        openStates[sOpen] = true;
-                    }
-                }
-            } catch(_) {}
+            // Always start archive from the first album.
+            targetScroll = 0;
+            currentScroll = 0;
+            openStates.fill(false);
             warmGlobalAssetsOnce();
             init();
         });
         startArchiveBridgeFromState();
         window.addEventListener("pageshow", () => {
+            // Always reset archive position to first record on return.
+            targetScroll = 0;
+            currentScroll = 0;
+            if (Array.isArray(openStates)) openStates.fill(false);
             refreshRecordLoadedState();
             startArchiveBridgeFromState();
+        });
+        window.addEventListener("focus", () => {
+            // Keep archive deterministic when returning from player/tab switch.
+            targetScroll = 0;
+            currentScroll = 0;
+            if (Array.isArray(openStates)) openStates.fill(false);
         });
         ["pointerdown","mousedown","touchstart","wheel","keydown"].forEach((evt)=>{
             window.addEventListener(evt, ensureArchiveBridgePlayback, {passive:true});

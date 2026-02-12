@@ -7,17 +7,18 @@
     "folder": "Vinyl Collection/John Mayer - Sob Rock",
     "cover": "Vinyl Collection/John Mayer - Sob Rock/cover.jpg",
     "tracks": [
-      "01. Last Train Home.mp3",
-      "02. Shouldn't Matter but It Does.mp3",
-      "03. New Light.mp3",
-      "04. Why You No Love Me.mp3",
-      "05. Wild Blue.mp3",
-      "06. Shot in the Dark.mp3",
-      "07. I Guess I Just Feel Like.mp3",
-      "08. Til the Right One Comes.mp3",
-      "09. Carry Me Away.mp3",
-      "10. All I Want Is to Be With You.mp3"
-    ]
+      "Last Train Home",
+      "Shouldn't Matter but It Does",
+      "New Light",
+      "Why You No Love Me",
+      "Wild Blue",
+      "Shot in the Dark",
+      "I Guess I Just Feel Like",
+      "Til the Right One Comes",
+      "Carry Me Away",
+      "All I Want Is to Be With You"
+    ],
+    "year": "2021"
   },
   {
     "name": "RUBBER SOUL",
@@ -27,21 +28,22 @@
     "folder": "Vinyl Collection/The Beatles - Rubber Soul (1965) [MP3 320] 88",
     "cover": "Vinyl Collection/The Beatles - Rubber Soul (1965) [MP3 320] 88/folder.jpg",
     "tracks": [
-      "01. Drive My Car.mp3",
-      "02. Norwegian Wood (This Bird Has Flown).mp3",
-      "03. You Won't See Me.mp3",
-      "04. Nowhere Man.mp3",
-      "05. Think For Yourself.mp3",
-      "06. The Word.mp3",
-      "07. Michelle.mp3",
-      "08. What Goes On.mp3",
-      "09. Girl.mp3",
-      "10. I'm Looking Through You.mp3",
-      "11. In My Life.mp3",
-      "12. Wait.mp3",
-      "13. If I Needed Someone.mp3",
-      "14. Run For Your Life.mp3"
-    ]
+      "Drive My Car",
+      "Norwegian Wood (This Bird Has Flown)",
+      "You Won't See Me",
+      "Nowhere Man",
+      "Think For Yourself",
+      "The Word",
+      "Michelle",
+      "What Goes On",
+      "Girl",
+      "I'm Looking Through You",
+      "In My Life",
+      "Wait",
+      "If I Needed Someone",
+      "Run For Your Life"
+    ],
+    "year": "1965"
   },
   {
     "name": "MORRISON HOTEL",
@@ -51,17 +53,18 @@
     "folder": "Vinyl Collection/The Doors - Morrison Hotel",
     "cover": "",
     "tracks": [
-      "The Doors - Blue Sunday.MP3",
-      "The Doors - Indian Summer.MP3",
-      "The Doors - Land Ho!.MP3",
-      "The Doors - Maggie M'gill.MP3",
-      "The Doors - Peace Frog.MP3",
-      "The Doors - Queen Of The Highway.MP3",
-      "The Doors - Roadhouse Blues.MP3",
-      "The Doors - Ship Of Fools.MP3",
-      "The Doors - The Spy.MP3",
-      "The Doors - Waiting For The Sun.MP3",
-      "The Doors - You Make Me Real.MP3"
-    ]
+      "Blue Sunday",
+      "Indian Summer",
+      "Land Ho!",
+      "Maggie M'gill",
+      "Peace Frog",
+      "Queen Of The Highway",
+      "Roadhouse Blues",
+      "Ship Of Fools",
+      "The Spy",
+      "Waiting For The Sun",
+      "You Make Me Real"
+    ],
+    "year": "1970"
   }
 ]
