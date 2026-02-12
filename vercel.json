@@ -1,5 +1,6 @@
 {
   "cleanUrls": false,
+  "outputDirectory": ".",
   "buildCommand": "python3 scripts/generate_collection_manifest.py",
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
