@@ -74,7 +74,7 @@
       --noise:none;
       --nav-bg: rgba(255, 255, 255, 0.2);
       --nav-text: #333;
-      --flip-overlay:#fff;
+      --flip-overlay:#000;
     }
 
     body[data-theme="dark"]{
@@ -538,7 +538,7 @@
       z-index:7000;
       opacity:0;
       pointer-events:none;
-      transition:opacity 220ms ease;
+      transition: opacity 0ms linear;
       background:#000;
     }
     .archive-layer.open{
@@ -824,24 +824,62 @@
     }
 
     let archiveTransitioning = false;
+    let archiveFrameReady = false;
+    let archiveFrameLoading = null;
+    function ensureArchiveFrameReady(){
+      if(archiveFrameReady) return Promise.resolve();
+      if(archiveFrameLoading) return archiveFrameLoading;
+      archiveFrameLoading = new Promise((resolve) => {
+        if(!archiveFrame){
+          resolve();
+          return;
+        }
+        const done = () => {
+          archiveFrameReady = true;
+          archiveFrameLoading = null;
+          resolve();
+        };
+        const onLoad = () => {
+          archiveFrame.removeEventListener("load", onLoad);
+          done();
+        };
+        archiveFrame.addEventListener("load", onLoad);
+        if(archiveFrame.src === "about:blank"){
+          archiveFrame.src = "archive.html?embedded=1";
+        } else {
+          // If src already set but cache is warm, ensure we still resolve.
+          setTimeout(() => {
+            if(!archiveFrameReady){
+              archiveFrame.removeEventListener("load", onLoad);
+              done();
+            }
+          }, 180);
+        }
+      });
+      return archiveFrameLoading;
+    }
+    function notifyArchiveResetFirst() {
+      try {
+        archiveFrame?.contentWindow?.postMessage({ type: "archive-reset-first" }, "*");
+      } catch(_) {}
+    }
     async function openArchive(e){
       e?.preventDefault();
       if(archiveTransitioning) return;
       archiveTransitioning = true;
       savePlaybackState();
-      if(archiveFrame && archiveFrame.src === "about:blank"){
-        archiveFrame.src = "archive.html?embedded=1";
-      }
       const overlay = $("flipOverlay");
       if(overlay){
-        overlay.style.transition = "opacity 420ms cubic-bezier(0.16, 1, 0.3, 1)";
+        overlay.style.transition = "opacity 360ms cubic-bezier(0.16, 1, 0.3, 1)";
         overlay.classList.add("on");
-        await sleep(320);
+        await sleep(260);
       }
+      await ensureArchiveFrameReady();
       archiveLayer?.classList.add("open");
       archiveLayer?.setAttribute("aria-hidden","false");
+      notifyArchiveResetFirst();
       if(overlay){
-        overlay.style.transition = "opacity 320ms cubic-bezier(0.16, 1, 0.3, 1)";
+        overlay.style.transition = "opacity 360ms cubic-bezier(0.16, 1, 0.3, 1)";
         overlay.classList.remove("on");
         await sleep(220);
         overlay.style.transition = "";
@@ -849,9 +887,28 @@
       archiveTransitioning = false;
     }
 
-    function closeArchiveLayer(){
+    async function closeArchiveLayer(useFade = true){
+      if(archiveTransitioning) return;
+      if(!archiveLayer?.classList.contains("open")){
+        savePlaybackState();
+        return;
+      }
+      archiveTransitioning = true;
+      const overlay = $("flipOverlay");
+      if(useFade && overlay){
+        overlay.style.transition = "opacity 360ms cubic-bezier(0.16, 1, 0.3, 1)";
+        overlay.classList.add("on");
+        await sleep(280);
+      }
       archiveLayer?.classList.remove("open");
       archiveLayer?.setAttribute("aria-hidden","true");
+      if(useFade && overlay){
+        overlay.style.transition = "opacity 360ms cubic-bezier(0.16, 1, 0.3, 1)";
+        overlay.classList.remove("on");
+        await sleep(220);
+        overlay.style.transition = "";
+      }
+      archiveTransitioning = false;
       savePlaybackState();
     }
 
@@ -1070,17 +1127,46 @@
     const getSideDuration=()=>sideDurations[currentSide] || sideDurations.A || 0;
 
     const parseTrackTitle=(pathOrName)=>{
-      const fileName = String(pathOrName || "").split("/").pop() || "";
-      return fileName
+      const fileName = decodeURIComponent((String(pathOrName || "").split("/").pop() || "").trim());
+      const fallback = fileName
         .replace(/\.(mp3|flac|wav|m4a|aac|ogg)\s*$/i, "")
-        .replace(/^\s*\d+\s*[\.\-\)]\s*/i, "")
-        .replace(/^\s*[^-]+-\s*/i, "")
+        .replace(/[_]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const rayTogetherAgain = (() => {
+        const src = fileName.toLowerCase();
+        if(!String(currentAlbumName || "").toUpperCase().includes("TOGETHER AGAIN")) return "";
+        if(/side a .*?-0?1/.test(src)) return "Together Again";
+        if(/side a .*?-0?2/.test(src)) return "I Like To Hear It Sometime";
+        if(/side a .*?-0?4/.test(src)) return "Please Forgive And Forget";
+        if(/side a .*?-0?6/.test(src)) return "Next Door To The Blues";
+        if(/side b .*?-0?4/.test(src)) return "All Night Long";
+        if(/side b .*?-0?5/.test(src)) return "Don't Let Her Know";
+        if(/side b .*?-0?6/.test(src)) return "Watch It Baby";
+        return "";
+      })();
+      if(rayTogetherAgain) return rayTogetherAgain;
+      const cleaned = fallback
+        .replace(/^\s*(?:track\s*)?\d{1,3}\s*[\.\-\)_]\s*/i, "")
+        .replace(/^\s*\d{1,3}\s+/, "")
+        .replace(/^\s*[^-]{2,60}\s-\s+/i, "")
+        .replace(/\s*,?\s*side\s*[ab]\s*\(archive\)\s*[-_ ]*\d*\s*$/i, "")
+        .replace(/\s*,?\s*side\s*[ab]\s*[-_ ]*\d*\s*$/i, "")
+        .replace(/\s*\(archive\)\s*[-_ ]*\d*\s*$/i, "")
+        .replace(/\s*[-_ ]\d{1,2}\s*$/i, "")
         .replace(/\s*\((19|20)\d{2}\)\s*$/i, "")
         .replace(/\s*\[[^\]]+\]\s*$/i, "")
         .replace(/[_]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
+      return cleaned || fallback || "Unknown track";
     };
+    const escapeHtml=(v)=>String(v)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll("\"","&quot;")
+      .replaceAll("'","&#39;");
 
     const getSideRange=(side)=>{
       if(side==="A"){
@@ -1113,7 +1199,7 @@
 
     const renderSidebarTrackLists=()=>{
       const makeItems=(list, baseIndex)=>list.map((src,i)=>{
-        const title=parseTrackTitle(src);
+        const title=escapeHtml(parseTrackTitle(src));
         const n=String(i+1).padStart(2,"0");
         const d = trackDurationsSec[baseIndex+i];
         return `<li class="track-item"><span class="track-name">${n}. ${title}</span><span class="track-dur">${d?formatTrackDur(d):"--:--"}</span></li>`;
@@ -1495,14 +1581,14 @@
       }
     }
 
-    function handleArchiveMessage(event){
+    async function handleArchiveMessage(event){
       const data = event?.data;
       if(!data || typeof data !== "object") return;
       if(data.type === "archive-close"){
-        closeArchiveLayer();
+        await closeArchiveLayer(true);
       }
       if(data.type === "archive-select-album" && data.album){
-        closeArchiveLayer();
+        await closeArchiveLayer(true);
         applySelectedAlbumAndStart(data.album).catch(()=>{});
       }
     }
@@ -1907,6 +1993,12 @@
     document.body.classList.add("no-record");
     window.addEventListener("message", handleArchiveMessage);
     document.addEventListener('DOMContentLoaded', async ()=>{
+      if (archiveFrame) {
+        archiveFrame.addEventListener("load", () => {
+          archiveFrameReady = true;
+          archiveFrameLoading = null;
+        });
+      }
       const idle = window.requestIdleCallback || ((cb)=>setTimeout(cb, 60));
       idle(() => warmArchiveResourcesOnce());
       idle(() => {

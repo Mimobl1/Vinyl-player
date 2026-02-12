@@ -767,18 +767,20 @@
 
         function generateArchiveBackgroundTexture() {
             const canvas = document.createElement("canvas");
-            canvas.width = 1024;
-            canvas.height = 1024;
+            canvas.width = 2048;
+            canvas.height = 2048;
             const ctx = canvas.getContext("2d");
-            // Single circular falloff (1x1 circle feel), kept dark.
-            const grad = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const r = Math.min(canvas.width, canvas.height) / 2;
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
             grad.addColorStop(0, "#000");
-            grad.addColorStop(1, "#111");
+            grad.addColorStop(1, "#020202");
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "rgba(0,0,0,0.35)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
             const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
             texture.needsUpdate = true;
             return texture;
         }
@@ -821,15 +823,40 @@
                 .split(/\s+/)
                 .map((w) => (w ? (w[0].toUpperCase() + w.slice(1)) : w))
                 .join(" ");
-            const trackNameOnly = (name) => String(name || "")
-                .replace(/^\s*\d+\s*[\.\-\)]\s*/i, "")
-                .replace(/^\s*[^-]+-\s*/i, "")
-                .replace(/\.(mp3|flac|wav|m4a|aac|ogg)\s*$/i, "")
-                .replace(/\s*\((19|20)\d{2}\)\s*$/i, "")
-                .replace(/\s*\[[^\]]+\]\s*$/i, "")
-                .replace(/[_]+/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
+            const trackNameOnly = (name) => {
+                const base = decodeURIComponent(String(name || "").trim())
+                    .replace(/\.(mp3|flac|wav|m4a|aac|ogg)\s*$/i, "")
+                    .replace(/[_]+/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                const rayTogetherAgain = (() => {
+                    const src = base.toLowerCase();
+                    if (!String(item?.name || "").toUpperCase().includes("TOGETHER AGAIN")) return "";
+                    if (/side a .*?-0?1/.test(src)) return "Together Again";
+                    if (/side a .*?-0?2/.test(src)) return "I Like To Hear It Sometime";
+                    if (/side a .*?-0?4/.test(src)) return "Please Forgive And Forget";
+                    if (/side a .*?-0?6/.test(src)) return "Next Door To The Blues";
+                    if (/side b .*?-0?4/.test(src)) return "All Night Long";
+                    if (/side b .*?-0?5/.test(src)) return "Don't Let Her Know";
+                    if (/side b .*?-0?6/.test(src)) return "Watch It Baby";
+                    return "";
+                })();
+                if (rayTogetherAgain) return rayTogetherAgain;
+                const cleaned = base
+                    .replace(/^\s*(?:track\s*)?\d{1,3}\s*[\.\-\)_]\s*/i, "")
+                    .replace(/^\s*\d{1,3}\s+/, "")
+                    .replace(/^\s*[^-]{2,60}\s-\s+/i, "")
+                    .replace(/\s*,?\s*side\s*[ab]\s*\(archive\)\s*[-_ ]*\d*\s*$/i, "")
+                    .replace(/\s*,?\s*side\s*[ab]\s*[-_ ]*\d*\s*$/i, "")
+                    .replace(/\s*\(archive\)\s*[-_ ]*\d*\s*$/i, "")
+                    .replace(/\s*[-_ ]\d{1,2}\s*$/i, "")
+                    .replace(/\s*\((19|20)\d{2}\)\s*$/i, "")
+                    .replace(/\s*\[[^\]]+\]\s*$/i, "")
+                    .replace(/[_]+/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                return cleaned || base || "Unknown track";
+            };
             const wrapText = (textVal, maxWidth, maxLines, lineHeight, x, y) => {
                 const words = String(textVal || "").split(/\s+/).filter(Boolean);
                 let line = "";
@@ -1114,29 +1141,46 @@
             return disk;
         }
 
-        function handleInteraction() {
-            if (!totalMeshes) return;
-            if (launchIndex !== -1) return;
-            if (isHovered && interactiveIndex !== -1) {
-                if (isPlayingLockedIndex(interactiveIndex)) {
-                    openStates[interactiveIndex] = false;
-                    return;
+        function pickAlbumIndexAtPointer() {
+            raycaster.layers.enable(0);
+            raycaster.layers.enable(DISK_LAYER);
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            if (!intersects.length) return -1;
+            for (let i = 0; i < intersects.length; i += 1) {
+                let hitObj = intersects[i].object;
+                while (hitObj.parent && !groups.includes(hitObj)) hitObj = hitObj.parent;
+                if (hitObj.userData && typeof hitObj.userData.index !== "undefined") {
+                    if (hitObj.visible && hitObj.position.z > -8) {
+                        return hitObj.userData.index;
+                    }
                 }
-                const currentFocusIdx = Math.round(currentScroll / scrollSensitivity);
-                
-                if (interactiveIndex !== currentFocusIdx) {
-                    targetScroll = interactiveIndex * scrollSensitivity;
-                    pendingOpenIndex = interactiveIndex;
-                    openStates.fill(false);
-                } else {
-                    const targetState = !openStates[interactiveIndex];
-                    openStates.fill(false);
-                    openStates[interactiveIndex] = targetState;
-                    if (targetState) playWoosh();
-                }
-                
-                document.getElementById('audio-hint').style.display = 'none';
             }
+            return -1;
+        }
+
+        function handleInteractionAtIndex(idx) {
+            if (!totalMeshes || launchIndex !== -1) return;
+            if (!Number.isFinite(idx) || idx < 0 || idx >= totalMeshes) return;
+            if (isPlayingLockedIndex(idx)) {
+                openStates[idx] = false;
+                return;
+            }
+            const currentFocusIdx = Math.round(currentScroll / scrollSensitivity);
+            if (idx !== currentFocusIdx) {
+                targetScroll = idx * scrollSensitivity;
+                openStates.fill(false);
+                // Open immediately on first click while camera settles.
+                openStates[idx] = true;
+                pendingOpenIndex = -1;
+                playWoosh();
+            } else {
+                const targetState = !openStates[idx];
+                openStates.fill(false);
+                openStates[idx] = targetState;
+                if (targetState) playWoosh();
+            }
+            document.getElementById('audio-hint').style.display = 'none';
         }
 
         function startLaunchToPlayer(idx, url, selectedPayload = null) {
@@ -1188,6 +1232,17 @@
             routeFade?.classList.remove('on');
             if (routeFade) routeFade.style.transition = '';
             playBtn.style.pointerEvents = 'auto';
+        }
+
+        function resetArchiveToFirst() {
+            targetScroll = 0;
+            currentScroll = 0;
+            pendingOpenIndex = -1;
+            openStates.fill(false);
+            if (playBtn) {
+                playBtn.classList.remove('visible');
+                playBtn.style.display = 'none';
+            }
         }
 
         function init() {
@@ -1278,8 +1333,14 @@
                 mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             });
 
-            window.addEventListener('mousedown', () => {
-               handleInteraction();
+            window.addEventListener('mousedown', (e) => {
+               if (e.target.closest('#play-button')) return;
+               mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+               mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+               const foundIdx = pickAlbumIndexAtPointer();
+               interactiveIndex = foundIdx;
+               isHovered = foundIdx !== -1 && !isPlayingLockedIndex(foundIdx);
+               handleInteractionAtIndex(foundIdx);
             });
 
             // Touch Events (Mobile/Tablet)
@@ -1316,26 +1377,11 @@
                     // Ignoriši ako je tapnuto play dugme (ono ima svoj handler)
                     if (e.target.closest('#play-button')) return;
                     
-                    // Forsiraj update raycastera za trenutni tap
-                    raycaster.setFromCamera(mouse, camera);
-                    const intersects = raycaster.intersectObjects(scene.children, true);
-                    let foundIdx = -1;
-                    if (intersects.length > 0) {
-                        for(let i = 0; i < intersects.length; i++) {
-                            let hitObj = intersects[i].object;
-                            while(hitObj.parent && !groups.includes(hitObj)) hitObj = hitObj.parent;
-                            if (hitObj.userData && typeof hitObj.userData.index !== 'undefined') {
-                                if (hitObj.visible && hitObj.position.z > -8) {
-                                    foundIdx = hitObj.userData.index;
-                                    break; 
-                                }
-                            }
-                        }
-                    }
+                    // Direct pick at current touch position (no stale hover state).
+                    const foundIdx = pickAlbumIndexAtPointer();
                     interactiveIndex = foundIdx;
                     isHovered = foundIdx !== -1 && !isPlayingLockedIndex(foundIdx);
-                    
-                    handleInteraction();
+                    handleInteractionAtIndex(foundIdx);
                 }
             });
 
@@ -1590,26 +1636,25 @@
                 playingIndex = -1;
             }
             // Always start archive from the first album.
-            targetScroll = 0;
-            currentScroll = 0;
-            openStates.fill(false);
+            resetArchiveToFirst();
             warmGlobalAssetsOnce();
             init();
         });
         startArchiveBridgeFromState();
         window.addEventListener("pageshow", () => {
-            // Always reset archive position to first record on return.
-            targetScroll = 0;
-            currentScroll = 0;
-            if (Array.isArray(openStates)) openStates.fill(false);
+            // In standalone mode reset to first album; embedded mode is controlled by parent.
+            if (!EMBEDDED) resetArchiveToFirst();
             refreshRecordLoadedState();
             startArchiveBridgeFromState();
         });
         window.addEventListener("focus", () => {
-            // Keep archive deterministic when returning from player/tab switch.
-            targetScroll = 0;
-            currentScroll = 0;
-            if (Array.isArray(openStates)) openStates.fill(false);
+            // Avoid unexpected jump-to-first while already browsing embedded archive.
+            if (!EMBEDDED) resetArchiveToFirst();
+        });
+        window.addEventListener("message", (event) => {
+            const data = event?.data;
+            if (!data || data.type !== "archive-reset-first") return;
+            resetArchiveToFirst();
         });
         ["pointerdown","mousedown","touchstart","wheel","keydown"].forEach((evt)=>{
             window.addEventListener(evt, ensureArchiveBridgePlayback, {passive:true});
