@@ -438,8 +438,8 @@
     .vinyl-label:after{content:"";position:absolute;inset:19%;border-radius:50%;border:1px solid rgba(22,22,22,.22);pointer-events:none}
     .label-standard{position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
     .label-header{position:absolute;top:24%;left:12%;right:12%;display:flex;flex-direction:column;align-items:center;gap:2px}
-    #labelBrand,.label-brand{font-family:Inter,system-ui,sans-serif;font-size:5.8px;font-weight:900;letter-spacing:.4px;line-height:1;color:#f3f3f3;text-align:center;text-transform:uppercase}
-    #labelTitle,.label-title{font-family:Inter,system-ui,sans-serif;font-size:3.9px;font-weight:400;letter-spacing:.4px;color:#ececec;text-align:center;line-height:1.1;text-transform:uppercase;opacity:1}
+    #labelBrand,.label-brand{font-family:Inter,system-ui,sans-serif;font-size:3.9px;font-weight:400;letter-spacing:.35px;line-height:1.1;color:#ececec;text-align:center;text-transform:uppercase;opacity:1}
+    #labelTitle,.label-title{font-family:Inter,system-ui,sans-serif;font-size:5.8px;font-weight:900;letter-spacing:.4px;color:#f3f3f3;text-align:center;line-height:1;text-transform:uppercase}
     .label-midband{position:absolute;left:4.8%;right:4.8%;top:calc(50% - 6.5% + 0px);height:13%;background:#181818;border-top:1px solid #1f1f1f;border-bottom:1px solid #1f1f1f;display:grid;grid-template-columns:1fr 1fr;align-items:center;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;font-size:4.3px;font-weight:400;letter-spacing:.2px;color:#f1f1f1;text-transform:uppercase}
     .label-midband span{text-align:center}
     .label-side{position:absolute;left:0;right:0;top:64.7%;font-family:Inter,system-ui,sans-serif;font-size:5.8px;font-weight:400;letter-spacing:.2px;color:#f1f1f1;text-transform:uppercase;text-align:center}
@@ -1405,12 +1405,12 @@
         setTonearmAngle(ARM_REST_ANGLE, false);
       }
 
-      if (labelBrand) labelBrand.textContent = String(name).toUpperCase().slice(0, 24);
-      if (labelTitle) labelTitle.textContent = (author || "UNKNOWN ARTIST").toUpperCase().slice(0, 22);
+      if (labelBrand) labelBrand.textContent = (author || "UNKNOWN ARTIST").toUpperCase().slice(0, 24);
+      if (labelTitle) labelTitle.textContent = String(name).toUpperCase().slice(0, 22);
       if (labelMeta) labelMeta.innerHTML = "DESIGN PORTFOLIO<br/>MILAN SAMARDZIC";
       if (sidebarTitle) sidebarTitle.textContent = name;
       if (sidebarArtist) sidebarArtist.textContent = author || "Unknown Artist";
-      if (sidebarMeta) sidebarMeta.textContent = duration ? `${duration}` : "";
+      if (sidebarMeta) sidebarMeta.textContent = duration ? `Length: ${duration}` : "";
       if (vinylLabel && isHexColor(color)) {
         const isLightTheme = document.body?.dataset?.theme === "light";
         const brighterColor = mixHexWithWhite(color, isLightTheme ? 0.14 : 0.10);

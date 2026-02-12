@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vinyl Cover Carousel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;800&display=swap');
+
+    :root {
+      --card-w: 600px;
+      --card-h: 600px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #050505;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .scene {
+      position: relative;
+      width: min(94vw, 900px);
+      height: min(90vh, 760px);
+      display: grid;
+      place-items: center;
+      perspective: 1400px;
+      perspective-origin: 50% 42%;
+    }
+
+    .stack {
+      position: relative;
+      width: min(var(--card-w), 88vw);
+      aspect-ratio: 1 / 1;
+      transform-style: preserve-3d;
+    }
+
+    .cover-card {
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 40px 100px rgba(0,0,0,.75);
+      overflow: hidden;
+      transform-style: preserve-3d;
+      will-change: transform, filter;
+      transition: transform 620ms cubic-bezier(.2,.8,.2,1), filter 620ms cubic-bezier(.2,.8,.2,1);
+      pointer-events: none;
+    }
+
+    .cover-card.active {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .cover-card.falling {
+      transition: transform 760ms cubic-bezier(.16,.84,.27,1), filter 760ms cubic-bezier(.16,.84,.27,1);
+      transform: rotateX(-70deg) translateZ(1000px) !important;
+      filter: brightness(0) saturate(0.6) !important;
+      z-index: 999 !important;
+      pointer-events: none;
+    }
+
+    .cover-bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--accent) 0%, #000 100%);
+    }
+
+    .grain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.05;
+      mix-blend-mode: soft-light;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .content {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      padding: 45px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .artist {
+      font-weight: 300;
+      font-size: 44px;
+      letter-spacing: -1.5px;
+      line-height: 1;
+    }
+
+    .year-box {
+      text-align: right;
+    }
+
+    .year {
+      font-weight: 800;
+      font-size: 26px;
+      line-height: 1;
+      display: block;
+    }
+
+    .tag {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: .75;
+    }
+
+    .title {
+      margin-top: 10px;
+      text-transform: uppercase;
+      font-weight: 800;
+      font-size: clamp(44px, 7.8vw, 82px);
+      line-height: 0.82;
+      letter-spacing: -4px;
+      text-wrap: balance;
+    }
+
+    .tracklist {
+      font-size: 13px;
+      line-height: 1.6;
+      letter-spacing: .2px;
+      color: rgba(255,255,255,.88);
+      margin-bottom: 30px;
+      max-width: 96%;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .vinyl {
+      position: absolute;
+      right: 5%;
+      bottom: 13%;
+      width: 38%;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      transform: translateX(var(--eject, 0%)) rotate(var(--spin, 0deg));
+      transition: transform 700ms cubic-bezier(.2,.8,.2,1);
+      z-index: 2;
+      pointer-events: none;
+      background:
+        conic-gradient(from 15deg,
+          rgba(255,255,255,.0) 0deg,
+          rgba(255,255,255,.25) 25deg,
+          rgba(255,255,255,.03) 70deg,
+          rgba(255,255,255,.0) 130deg,
+          rgba(255,255,255,.16) 190deg,
+          rgba(255,255,255,.02) 240deg,
+          rgba(255,255,255,.0) 360deg),
+        repeating-radial-gradient(circle at 50% 50%,
+          #0b0b0b 0px,
+          #0b0b0b 1.2px,
+          #171717 1.25px,
+          #101010 2.7px),
+        radial-gradient(circle at 50% 50%, #181818 0%, #0a0a0a 74%, #000 100%);
+      box-shadow: 0 18px 45px rgba(0,0,0,.6), inset 0 0 50px rgba(0,0,0,.65);
+    }
+
+    .vinyl::before {
+      content: "";
+      position: absolute;
+      inset: 32%;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.28);
+    }
+
+    .vinyl::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: #f5f5f5;
+    }
+
+    .nav {
+      position: absolute;
+      inset-inline: 0;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      z-index: 2000;
+    }
+
+    .btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.08);
+      color: #fff;
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    @media (max-width: 760px) {
+      .content { padding: 28px; }
+      .artist { font-size: 30px; }
+      .title { letter-spacing: -2px; }
+      .tracklist { font-size: 11px; }
+      .footer { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="stack" id="stack"></div>
+    <div class="nav">
+      <button class="btn" id="prevBtn" aria-label="Previous">&#10094;</button>
+      <button class="btn" id="nextBtn" aria-label="Next">&#10095;</button>
+    </div>
+  </div>
+
+  <script>
+    const albums = [
+      { artist: "The Doors", title: "Morrison Hotel", year: "1970", tag: "Original", rpm: "33 RPM Album", footer: "Vinyl Record", accent: "#1f5de6", tracks: ["Roadhouse Blues", "Waiting for the Sun", "You Make Me Real", "Peace Frog", "Blue Sunday", "Ship of Fools", "Land Ho!", "The Spy", "Queen of the Highway", "Indian Summer", "Maggie M'Gill"] },
+      { artist: "Pink Floyd", title: "Dark Side Moon", year: "1973", tag: "Classic", rpm: "33 RPM Album", footer: "Vinyl Record", accent: "#a31b4e", tracks: ["Speak to Me", "Breathe", "On the Run", "Time", "Great Gig in the Sky", "Money", "Us and Them", "Any Colour You Like", "Brain Damage", "Eclipse"] },
+      { artist: "Led Zeppelin", title: "Untitled IV", year: "1971", tag: "Deluxe", rpm: "33 RPM Album", footer: "Vinyl Record", accent: "#946a22", tracks: ["Black Dog", "Rock and Roll", "Battle of Evermore", "Stairway to Heaven", "Misty Mountain Hop", "Four Sticks", "Going to California", "When the Levee Breaks"] },
+      { artist: "Nirvana", title: "Nevermind", year: "1991", tag: "Grunge", rpm: "33 RPM Album", footer: "Vinyl Record", accent: "#9d7c14", tracks: ["Smells Like Teen Spirit", "In Bloom", "Come as You Are", "Breed", "Lithium", "Polly", "Territorial Pissings", "Drain You", "Stay Away", "On a Plain", "Something in the Way"] },
+      { artist: "David Bowie", title: "Ziggy Stardust", year: "1972", tag: "Ziggy", rpm: "33 RPM Album", footer: "Vinyl Record", accent: "#c0571c", tracks: ["Five Years", "Soul Love", "Moonage Daydream", "Starman", "It Ain't Easy", "Lady Stardust", "Star", "Hang On to Yourself", "Ziggy Stardust", "Suffragette City", "Rock 'n' Roll Suicide"] }
+    ];
+
+    const stack = document.getElementById('stack');
+    let active = 0;
+    let busy = false;
+
+    function cardHTML(a) {
+      const words = a.title.toUpperCase().split(/\s+/);
+      const mid = Math.ceil(words.length / 2);
+      const line1 = words.slice(0, mid).join(' ');
+      const line2 = words.slice(mid).join(' ');
+      return `
+        <article class="cover-card" style="--accent:${a.accent}">
+          <div class="cover-bg"></div>
+          <div class="grain"></div>
+          <div class="content">
+            <header class="header">
+              <div class="artist">${a.artist}</div>
+              <div class="year-box"><span class="year">${a.year}</span><span class="tag">${a.tag}</span></div>
+            </header>
+            <h2 class="title">${line1}${line2 ? '<br>' + line2 : ''}</h2>
+            <footer>
+              <p class="tracklist">${a.tracks.map((t, i) => `${i + 1}. ${t}`).join(', ')}.</p>
+              <div class="footer"><span>${a.rpm}</span><span>${a.footer}</span></div>
+            </footer>
+          </div>
+          <div class="vinyl"></div>
+        </article>
+      `;
+    }
+
+    function render() {
+      stack.innerHTML = albums.map(cardHTML).join('');
+      positionCards();
+      bindEject();
+    }
+
+    function positionCards() {
+      const cards = [...stack.querySelectorAll('.cover-card')];
+      const n = cards.length;
+
+      cards.forEach((card, i) => {
+        const rel = (i - active + n) % n;
+        const depth = Math.min(rel, 4);
+        const y = depth * 8;
+        const z = -depth * 70;
+        const s = 1 - depth * 0.035;
+        const rotY = depth * -2.5;
+        const brightness = 1 - depth * 0.18;
+
+        card.classList.remove('active', 'falling');
+        card.style.zIndex = String(100 - depth);
+        card.style.transform = `translateY(${y}px) translateZ(${z}px) rotateY(${rotY}deg) scale(${s})`;
+        card.style.filter = `brightness(${Math.max(0.2, brightness)})`;
+      });
+
+      cards[active].classList.add('active');
+      cards[active].style.transform = 'translateY(0) translateZ(40px) rotateY(0deg) scale(1)';
+      cards[active].style.filter = 'brightness(1)';
+    }
+
+    function bindEject() {
+      const cards = [...stack.querySelectorAll('.cover-card')];
+      cards.forEach((card, i) => {
+        card.onclick = () => {
+          if (i !== active || busy) return;
+          const vinyl = card.querySelector('.vinyl');
+          const ejected = vinyl.dataset.ejected === '1';
+          vinyl.dataset.ejected = ejected ? '0' : '1';
+          vinyl.style.setProperty('--eject', ejected ? '0%' : '48%');
+          vinyl.style.setProperty('--spin', ejected ? '0deg' : '360deg');
+        };
+      });
+    }
+
+    function go(dir) {
+      if (busy) return;
+      busy = true;
+      const cards = [...stack.querySelectorAll('.cover-card')];
+      const current = cards[active];
+      current.classList.add('falling');
+
+      setTimeout(() => {
+        active = (active + dir + cards.length) % cards.length;
+        positionCards();
+        bindEject();
+        busy = false;
+      }, 760);
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', () => go(-1));
+    document.getElementById('nextBtn').addEventListener('click', () => go(1));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') go(-1);
+      if (e.key === 'ArrowRight') go(1);
+    });
+
+    render();
+  </script>
+</body>
+</html>
