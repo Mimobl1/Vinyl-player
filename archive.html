@@ -335,8 +335,8 @@
     </div>
 
     <script>
-        const COLLECTION_API_URLS = ["/api/collection", "/api/collection/"];
         const COLLECTION_MANIFEST_URL = "vinyl-collection.json";
+        const IS_FILE_PROTOCOL = window.location.protocol === "file:";
         const DEFAULT_COLLECTION = [
             {
                 name: "SOB ROCK",
@@ -784,36 +784,9 @@
         }
 
         async function loadCollectionManifest() {
-            for (const apiUrl of COLLECTION_API_URLS) {
-                try {
-                    const bust = `t=${Date.now()}`;
-                    const apiRes = await fetch(`${apiUrl}?${bust}`, { cache: "no-store" });
-                    if (apiRes.ok) {
-                        const apiData = await apiRes.json();
-                        const parsedApi = Array.isArray(apiData) ? apiData : [];
-                        if (parsedApi.length) {
-                            await enrichAlbumDurations(parsedApi);
-                            applyCollectionData(parsedApi);
-                            return;
-                        }
-                    }
-                } catch (_) {
-                    // try next API URL
-                }
-            }
+            // Vercel/prod path: trust generated static manifest (no folder listing fetches).
             try {
-                const scanned = await scanCollectionFolderAlbums();
-                if (Array.isArray(scanned) && scanned.length) {
-                    await enrichAlbumDurations(scanned);
-                    applyCollectionData(scanned);
-                    try { localStorage.setItem(ARCHIVE_ALBUMS_KEY, JSON.stringify(collection)); } catch (_) {}
-                    return;
-                }
-            } catch (_) {
-                // fallback to manifest/cached/default below
-            }
-            try {
-                const res = await fetch(COLLECTION_MANIFEST_URL, { cache: "no-store" });
+                const res = await fetch(`${COLLECTION_MANIFEST_URL}?t=${Date.now()}`, { cache: "no-store" });
                 if (!res.ok) throw new Error(`manifest status ${res.status}`);
                 const data = await res.json();
                 const parsed = Array.isArray(data) ? data : [];
@@ -824,6 +797,20 @@
                 }
             } catch (_) {
                 // fallback below
+            }
+            // Local file:// path fallback (development without server).
+            if (IS_FILE_PROTOCOL) {
+                try {
+                    const scanned = await scanCollectionFolderAlbums();
+                    if (Array.isArray(scanned) && scanned.length) {
+                        await enrichAlbumDurations(scanned);
+                        applyCollectionData(scanned);
+                        try { localStorage.setItem(ARCHIVE_ALBUMS_KEY, JSON.stringify(collection)); } catch (_) {}
+                        return;
+                    }
+                } catch (_) {
+                    // fallback below
+                }
             }
             applyCollectionData(DEFAULT_COLLECTION);
         }
