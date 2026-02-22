@@ -286,8 +286,8 @@
       padding:0 6px 48px 0;
       scrollbar-width:none;
       -ms-overflow-style:none;
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0px, #000 8px, #000 calc(100% - 80px), transparent 100%);
-      mask-image: linear-gradient(to bottom, transparent 0px, #000 8px, #000 calc(100% - 80px), transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, #000 0px, #000 calc(100% - 80px), transparent 100%);
+      mask-image: linear-gradient(to bottom, #000 0px, #000 calc(100% - 80px), transparent 100%);
     }
     .sidebar-scroll::-webkit-scrollbar{display:none}
     .tracklist { list-style: none; padding: 0; margin-top: 10px; }
@@ -968,7 +968,8 @@
     function restoreSidebarState(){
       let saved = null;
       try { saved = localStorage.getItem(SIDEBAR_STATE_KEY); } catch(_) { saved = null; }
-      applySidebarState(saved === "1");
+      // Default state: open sidebar unless user explicitly closed it.
+      applySidebarState(saved === null ? true : saved === "1");
     }
 
     function updateScale(){
@@ -1160,6 +1161,80 @@
     let feedbackToastTimer = null;
     let feedbackWaitingNextSelection = false;
     let feedbackSent = false;
+    let scratchCtx = null;
+    let scratchGain = null;
+    let scratchFilter = null;
+    let scratchSource = null;
+
+    function ensureScratchSynth(){
+      if(scratchCtx && scratchGain && scratchFilter && scratchSource) return true;
+      try{
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if(!Ctx) return false;
+        scratchCtx = scratchCtx || new Ctx();
+        if(scratchCtx.state === "suspended"){
+          scratchCtx.resume().catch(()=>{});
+        }
+        if(!scratchGain){
+          scratchGain = scratchCtx.createGain();
+          scratchGain.gain.value = 0;
+        }
+        if(!scratchFilter){
+          scratchFilter = scratchCtx.createBiquadFilter();
+          scratchFilter.type = "bandpass";
+          scratchFilter.frequency.value = 2200;
+          scratchFilter.Q.value = 2.1;
+          scratchFilter.connect(scratchGain);
+          scratchGain.connect(scratchCtx.destination);
+        }
+        if(!scratchSource){
+          const len = Math.floor(scratchCtx.sampleRate * 1.0);
+          const buf = scratchCtx.createBuffer(1, len, scratchCtx.sampleRate);
+          const ch = buf.getChannelData(0);
+          for(let i=0;i<len;i++){
+            ch[i] = (Math.random() * 2 - 1) * 0.9;
+          }
+          scratchSource = scratchCtx.createBufferSource();
+          scratchSource.buffer = buf;
+          scratchSource.loop = true;
+          scratchSource.connect(scratchFilter);
+          scratchSource.start();
+        }
+        return true;
+      } catch(_){
+        return false;
+      }
+    }
+
+    function startScratchSynth(){
+      if(!ensureScratchSynth()) return;
+      const now = scratchCtx.currentTime;
+      scratchGain.gain.cancelScheduledValues(now);
+      scratchGain.gain.setValueAtTime(scratchGain.gain.value || 0, now);
+      scratchGain.gain.linearRampToValueAtTime(0.028, now + 0.018);
+    }
+
+    function updateScratchSynth(deltaDeg){
+      if(!scratchCtx || !scratchGain || !scratchFilter) return;
+      const now = scratchCtx.currentTime;
+      const strength = Math.min(1, Math.abs(deltaDeg) / 14);
+      const gainTarget = 0.04 + strength * 0.34;
+      const freqTarget = 1200 + Math.min(4600, Math.abs(deltaDeg) * 110);
+      const qTarget = 1.8 + strength * 3.2;
+      scratchGain.gain.cancelScheduledValues(now);
+      scratchGain.gain.linearRampToValueAtTime(gainTarget, now + 0.012);
+      scratchFilter.frequency.cancelScheduledValues(now);
+      scratchFilter.frequency.linearRampToValueAtTime(freqTarget, now + 0.016);
+      scratchFilter.Q.cancelScheduledValues(now);
+      scratchFilter.Q.linearRampToValueAtTime(qTarget, now + 0.016);
+    }
+
+    function stopScratchSynth(){
+      if(!scratchCtx || !scratchGain) return;
+      const now = scratchCtx.currentTime;
+      scratchGain.gain.cancelScheduledValues(now);
+      scratchGain.gain.linearRampToValueAtTime(0.0001, now + 0.08);
+    }
 
     function clearFeedbackTimer(){
       if(feedbackTimer){
@@ -1338,7 +1413,7 @@
       vinylNoiseAudio.volume = Math.max(0, Math.min(1, v * 0.7));
     };
     const syncVinylNoise=()=>{
-      const shouldPlay = powered && hasLoadedVinyl() && (playing || leadInNoiseActive) && !dragRec && !dragArm;
+      const shouldPlay = powered && hasLoadedVinyl() && (playing || leadInNoiseActive) && !dragRec && !dragArm && !isScratchingTransport;
       if(shouldPlay){
         if(vinylNoiseAudio.paused){
           vinylNoiseAudio.play().catch(()=>{});
@@ -1434,6 +1509,10 @@
 
     const ensureTrackIndexInCurrentSide=()=>{
       const range=getSideRange(currentSide);
+      if(range.end < range.start){
+        currentTrackIndex = 0;
+        return;
+      }
       if(currentTrackIndex<range.start || currentTrackIndex>range.end){
         currentTrackIndex=range.start;
       }
@@ -1445,6 +1524,19 @@
       if(deckAudio.src !== new URL(encoded, window.location.href).href){
         deckAudio.src = encoded;
       }
+    };
+    const prepareScratchSourceForCurrentSide=()=>{
+      if(!albumTracks.length) return;
+      const range = getSideRange(currentSide);
+      if(range.end < range.start) return;
+      if(currentTrackIndex < range.start || currentTrackIndex > range.end){
+        currentTrackIndex = range.start;
+      }
+      setDeckSourceByIndex(currentTrackIndex);
+      syncTrackFromElapsed();
+      try {
+        if(deckAudio.readyState < 2) deckAudio.load();
+      } catch(_) {}
     };
 
     const formatTrackDur=(sec)=>{
@@ -1619,6 +1711,7 @@
       if(labelSideText) labelSideText.textContent=`SIDE ${currentSide}`;
     };
     deckAudio.addEventListener("ended", async ()=>{
+      if(dragRec || dragArm || isScratchingTransport) return;
       if(!playing) return;
       if(nextDeckTrackInSide()){
         await playDeckTrack();
@@ -2075,9 +2168,14 @@
 
     // Scratching
     let dragRec=false,lastAng=0,scratch=0;
-    let scratchAudioActive=false;
+    let liveScratchRate=0.12;
+    let isScratchingTransport=false;
     let dragArm=false,wasPlayingBeforeArmDrag=false;
     let wasPlayingBeforeScratch=false;
+    let scratchShouldResume=false;
+    let scratchInputMode="";
+    let scratchLastEventTs=0;
+    let endDrag=()=>{};
     const ang=(e)=>{
       const r=platter.getBoundingClientRect();
       const cx=r.left+r.width/2,cy=r.top+r.height/2;
@@ -2087,47 +2185,73 @@
     const ENABLE_RECORD_SCRATCH = true;
     platter.addEventListener("mousedown",e=>{
       if(!ENABLE_RECORD_SCRATCH) return;
+      if(dragRec) return;
       const armIsAtRest = Math.abs(getCurrentTonearmAngle() - ARM_REST_ANGLE) < 0.45;
-      if(!playing && armIsAtRest && elapsedMs <= 0){
+      const hasSideTracks = currentSide === "A" ? tracksBySide.A.length > 0 : tracksBySide.B.length > 0;
+      const blockIdleASideScratch = !playing && armIsAtRest && elapsedMs <= 0 && currentSide === "A";
+      if(!hasSideTracks || blockIdleASideScratch){
         return;
       }
       dragRec=true;
-      scratchAudioActive=false;
+      isScratchingTransport=true;
+      scratchShouldResume = !!(playing || leadInNoiseActive || playStartMs != null || !deckAudio.paused);
+      scratchInputMode="mouse";
+      scratchLastEventTs=performance.now();
       lastAng=ang(e);
       scratch=0;
       wasPlayingBeforeScratch = playing;
-      if(wasPlayingBeforeScratch){
-        if(playT){clearTimeout(playT);playT=null;}
-        if(playStartMs!=null){
-          elapsedMs += (performance.now() - playStartMs) * Math.max(0.02, Math.min(3, Math.abs(speed || base || 1)));
-        }
-        playStartMs=null;
-        playing=false;
-        target=0;
-        pauseDeckTrack();
+      if(playT){clearTimeout(playT);playT=null;}
+      if(playStartMs!=null){
+        elapsedMs += (performance.now() - playStartMs) * Math.max(0.02, Math.min(3, Math.abs(speed || base || 1)));
+      }
+      playStartMs=null;
+      playing=false;
+      target=0;
+      prepareScratchSourceForCurrentSide();
+      try {
+        deckAudio.playbackRate = 0.12;
+        deckAudio.preservesPitch = false;
+        deckAudio.muted = false;
+        deckAudio.volume = targetVolume;
+      } catch(_) {}
+      if(deckAudio.paused){
+        playDeckTrack().catch(()=>{});
       }
       syncVinylNoise();
     });
     platter.addEventListener("touchstart",e=>{
       if(!ENABLE_RECORD_SCRATCH) return;
+      if(dragRec) return;
       const armIsAtRest = Math.abs(getCurrentTonearmAngle() - ARM_REST_ANGLE) < 0.45;
-      if(!playing && armIsAtRest && elapsedMs <= 0){
+      const hasSideTracks = currentSide === "A" ? tracksBySide.A.length > 0 : tracksBySide.B.length > 0;
+      const blockIdleASideScratch = !playing && armIsAtRest && elapsedMs <= 0 && currentSide === "A";
+      if(!hasSideTracks || blockIdleASideScratch){
         return;
       }
       dragRec=true;
-      scratchAudioActive=false;
+      isScratchingTransport=true;
+      scratchShouldResume = !!(playing || leadInNoiseActive || playStartMs != null || !deckAudio.paused);
+      scratchInputMode="touch";
+      scratchLastEventTs=performance.now();
       lastAng=ang(e);
       scratch=0;
       wasPlayingBeforeScratch = playing;
-      if(wasPlayingBeforeScratch){
-        if(playT){clearTimeout(playT);playT=null;}
-        if(playStartMs!=null){
-          elapsedMs += (performance.now() - playStartMs) * Math.max(0.02, Math.min(3, Math.abs(speed || base || 1)));
-        }
-        playStartMs=null;
-        playing=false;
-        target=0;
-        pauseDeckTrack();
+      if(playT){clearTimeout(playT);playT=null;}
+      if(playStartMs!=null){
+        elapsedMs += (performance.now() - playStartMs) * Math.max(0.02, Math.min(3, Math.abs(speed || base || 1)));
+      }
+      playStartMs=null;
+      playing=false;
+      target=0;
+      prepareScratchSourceForCurrentSide();
+      try {
+        deckAudio.playbackRate = 0.12;
+        deckAudio.preservesPitch = false;
+        deckAudio.muted = false;
+        deckAudio.volume = targetVolume;
+      } catch(_) {}
+      if(deckAudio.paused){
+        playDeckTrack().catch(()=>{});
       }
       syncVinylNoise();
     },{passive:true});
@@ -2138,27 +2262,44 @@
         return;
       }
       if(!dragRec) return;
-      const a=ang(e);let d=a-lastAng;if(d>180)d-=360;if(d<-180)d+=360;
-      scratch=d*.25;rot+=d;lastAng=a;
+      if(e?.type === "mousemove" && (e.buttons & 1) === 0){
+        endDrag();
+        return;
+      }
+      scratchLastEventTs = performance.now();
+      const a = ang(e);
+      if(!Number.isFinite(a)) return;
+      let d = a - lastAng;
+      if(d>180)d-=360;
+      if(d<-180)d+=360;
+      if(!Number.isFinite(d)) return;
+      scratch = d * .25;
+      if(!Number.isFinite(rot)) rot = 0;
+      rot += d;
+      lastAng = a;
       setRecordRotation(rot%360);
       const sideMs = getSideDuration()*1000;
-      const scrubMs = d * 22;
+      const scrubMs = d * 36;
       elapsedMs = Math.max(0, Math.min(sideMs, elapsedMs + scrubMs));
       setTimer(Math.max(0, getSideDuration()-Math.floor(elapsedMs/1000)));
       setTonearmFromElapsed(false);
       syncTrackFromElapsed();
-      try { deckAudio.currentTime = Math.max(0, Number(deckAudio.currentTime || 0)); } catch(_) {}
-      const armIsOnRecord = Math.abs(getCurrentTonearmAngle() - ARM_REST_ANGLE) >= 0.45;
-      if(armIsOnRecord){
-        const scratchRate = Math.max(0.22, Math.min(3, Math.abs(d) * 0.08 + 0.26));
-        try {
-          deckAudio.playbackRate = scratchRate;
-          deckAudio.preservesPitch = false;
-        } catch(_) {}
-        if(deckAudio.paused){
-          deckAudio.play().catch(()=>{});
-        }
-        scratchAudioActive = true;
+      try {
+        const cur = Math.max(0, Number(deckAudio.currentTime || 0));
+        const signedNudge = (d < 0 ? -1 : 1) * Math.min(0.02, Math.abs(d) * 0.0015);
+        deckAudio.currentTime = Math.max(0, cur + signedNudge);
+      } catch(_) {}
+      const scratchRate = Math.max(0.06, Math.min(3, Math.abs(d) * 0.22 + 0.06));
+      liveScratchRate = scratchRate;
+      try {
+        deckAudio.playbackRate = scratchRate;
+        deckAudio.preservesPitch = false;
+      } catch(_) {}
+      if(deckAudio.paused){
+        deckAudio.play().catch(()=>{});
+      }
+      if(d < 0){
+        try { deckAudio.currentTime = Math.max(0, deckAudio.currentTime - Math.min(0.09, Math.abs(d) * 0.004)); } catch(_) {}
       }
     };
     window.addEventListener("mousemove",onMove);
@@ -2204,36 +2345,79 @@
     };
     document.querySelector(".headshell-pro")?.addEventListener("mousedown", startArmDrag);
     document.querySelector(".headshell-pro")?.addEventListener("touchstart", startArmDrag, {passive:false});
-    const endDrag=()=>{
+    endDrag=()=>{
       if(!dragRec) return;
       dragRec=false;
       speed = Math.max(0, Math.min(base, Math.abs(scratch)));
-      if(wasPlayingBeforeScratch){
+      if(!Number.isFinite(speed)) speed = Math.max(0.18, base * 0.65);
+      try { deckAudio.preservesPitch = true; } catch(_) {}
+      const armIsOnRecord = Math.abs(getCurrentTonearmAngle() - ARM_REST_ANGLE) >= 0.45;
+      const shouldResume = powered && hasLoadedVinyl() && armIsOnRecord;
+      if(shouldResume){
+        const sideMs = Math.max(1, getSideDuration() * 1000);
+        if(elapsedMs >= sideMs - 8){
+          elapsedMs = Math.max(0, sideMs - 600);
+          setTimer(Math.max(0, getSideDuration() - Math.floor(elapsedMs / 1000)));
+          syncTrackFromElapsed();
+        }
         playing = true;
         target = base;
-        speed = Math.max(speed, base);
+        speed = Math.max(speed, base * 0.85);
         playStartMs = performance.now();
-        deckAudio.playbackRate = Math.max(0.03, Math.min(3, base));
+        try {
+          deckAudio.playbackRate = Math.max(0.03, Math.min(3, base));
+          deckAudio.preservesPitch = true;
+        } catch(_) {}
         playDeckTrack().catch(()=>{});
+        setTimeout(()=>{
+          if(!dragRec && playing && deckAudio.paused){
+            deckAudio.play().catch(()=>{});
+          }
+          if(!dragRec && playing && target <= 0){
+            target = base;
+          }
+          if(!dragRec && playing && speed < (base * 0.35)){
+            speed = base * 0.75;
+          }
+        }, 120);
         syncVinylNoise();
       } else {
         pauseDeckTrack();
         syncVinylNoise();
       }
-      scratchAudioActive = false;
+      scratch = 0;
+      isScratchingTransport = false;
       wasPlayingBeforeScratch = false;
+      scratchShouldResume = false;
+      scratchInputMode = "";
+      scratchLastEventTs = 0;
     };
     window.addEventListener("mouseup",endDrag);
     window.addEventListener("touchend",endDrag);
+    window.addEventListener("touchcancel",endDrag);
+    window.addEventListener("blur",endDrag);
     window.addEventListener("mouseup",endArmDrag);
     window.addEventListener("touchend",endArmDrag);
 
     function loop(){
+      if(dragRec && scratchInputMode==="mouse" && (performance.now() - scratchLastEventTs) > 600){
+        endDrag();
+      }
+      const visualTransportRunning = powered && hasLoadedVinyl() && !dragRec && !dragArm && (!deckAudio.paused || playing || leadInNoiseActive);
+      if(visualTransportRunning) target = base;
       if(playStartMs!=null) target = base;
       if(leadInNoiseActive) target = base;
-      if(!playing && !leadInNoiseActive) target = 0;
+      if(!visualTransportRunning && !leadInNoiseActive && !playing) target = 0;
+      if(playing && !dragRec && target <= 0){
+        target = base;
+      }
       if(!dragRec){
         const accel = 0.035;
+        if(!Number.isFinite(speed)) speed = Math.max(0.12, base * 0.55);
+        if(playing && speed < 0.02){
+          speed = Math.max(speed, base * 0.45);
+        }
+        if(!Number.isFinite(rot)) rot = 0;
         speed += (target - speed) * accel;
         if(Math.abs(speed) > 0.0005){
           rot += speed * 3.9;
@@ -2241,7 +2425,7 @@
         }
       }
       if(!deckAudio.paused){
-        const rate = Math.max(0.03, Math.min(3, Math.abs(speed)));
+        const rate = dragRec ? liveScratchRate : Math.max(0.03, Math.min(3, Math.abs(speed)));
         deckAudio.playbackRate = rate;
       }
       if(playing && playStartMs!=null && !dragRec && !dragArm){
