@@ -2199,6 +2199,8 @@
       scratchLastEventTs=performance.now();
       lastAng=ang(e);
       scratch=0;
+      liveScratchRate = 0.14;
+      startScratchSynth();
       wasPlayingBeforeScratch = playing;
       if(playT){clearTimeout(playT);playT=null;}
       if(playStartMs!=null){
@@ -2235,6 +2237,8 @@
       scratchLastEventTs=performance.now();
       lastAng=ang(e);
       scratch=0;
+      liveScratchRate = 0.14;
+      startScratchSynth();
       wasPlayingBeforeScratch = playing;
       if(playT){clearTimeout(playT);playT=null;}
       if(playStartMs!=null){
@@ -2291,6 +2295,7 @@
       } catch(_) {}
       const scratchRate = Math.max(0.06, Math.min(3, Math.abs(d) * 0.22 + 0.06));
       liveScratchRate = scratchRate;
+      updateScratchSynth(d);
       try {
         deckAudio.playbackRate = scratchRate;
         deckAudio.preservesPitch = false;
@@ -2348,11 +2353,12 @@
     endDrag=()=>{
       if(!dragRec) return;
       dragRec=false;
+      stopScratchSynth();
       speed = Math.max(0, Math.min(base, Math.abs(scratch)));
       if(!Number.isFinite(speed)) speed = Math.max(0.18, base * 0.65);
       try { deckAudio.preservesPitch = true; } catch(_) {}
-      const armIsOnRecord = Math.abs(getCurrentTonearmAngle() - ARM_REST_ANGLE) >= 0.45;
-      const shouldResume = powered && hasLoadedVinyl() && armIsOnRecord;
+      const shouldResume = powered && hasLoadedVinyl();
+      isScratchingTransport = false;
       if(shouldResume){
         const sideMs = Math.max(1, getSideDuration() * 1000);
         if(elapsedMs >= sideMs - 8){
@@ -2362,7 +2368,7 @@
         }
         playing = true;
         target = base;
-        speed = Math.max(speed, base * 0.85);
+        speed = Math.max(speed, base);
         playStartMs = performance.now();
         try {
           deckAudio.playbackRate = Math.max(0.03, Math.min(3, base));
@@ -2370,14 +2376,14 @@
         } catch(_) {}
         playDeckTrack().catch(()=>{});
         setTimeout(()=>{
-          if(!dragRec && playing && deckAudio.paused){
+          if(!dragRec && deckAudio.paused){
             deckAudio.play().catch(()=>{});
           }
-          if(!dragRec && playing && target <= 0){
+          if(!dragRec && target <= 0){
             target = base;
           }
-          if(!dragRec && playing && speed < (base * 0.35)){
-            speed = base * 0.75;
+          if(!dragRec && (!Number.isFinite(speed) || speed < (base * 0.55))){
+            speed = base;
           }
         }, 120);
         syncVinylNoise();
@@ -2386,7 +2392,6 @@
         syncVinylNoise();
       }
       scratch = 0;
-      isScratchingTransport = false;
       wasPlayingBeforeScratch = false;
       scratchShouldResume = false;
       scratchInputMode = "";
@@ -2400,7 +2405,7 @@
     window.addEventListener("touchend",endArmDrag);
 
     function loop(){
-      if(dragRec && scratchInputMode==="mouse" && (performance.now() - scratchLastEventTs) > 600){
+      if(dragRec && (performance.now() - scratchLastEventTs) > 140){
         endDrag();
       }
       const visualTransportRunning = powered && hasLoadedVinyl() && !dragRec && !dragArm && (!deckAudio.paused || playing || leadInNoiseActive);
@@ -2414,8 +2419,8 @@
       if(!dragRec){
         const accel = 0.035;
         if(!Number.isFinite(speed)) speed = Math.max(0.12, base * 0.55);
-        if(playing && speed < 0.02){
-          speed = Math.max(speed, base * 0.45);
+        if(visualTransportRunning && speed < 0.02){
+          speed = Math.max(speed, base * 0.9);
         }
         if(!Number.isFinite(rot)) rot = 0;
         speed += (target - speed) * accel;
